@@ -35,12 +35,59 @@ struct {
 	__type(value, __u8); // 1 = banned, 0 = unbanned
 } ipv6_bans SEC(".maps");
 
-static void parse_dns_question(struct xdp_md *ctx, struct dnshdr *dns_header, struct dnsquestion *dns_question, void *question_start) {
+// TODO: Filter out cloudflare-dns and google-dns requests that are done via DNS over HTTPS
+// So all traffic to 1.0.0.1, 1.1.1.1, 8.8.4.4, 8.8.8.8 must be blocked, probably
+
+#ifdef ENABLE_DNSFILTER
+static __always_inline int is_malicious_dns_packet(struct dnshdr *dns_header) {
+
+	// TODO: If dns question, filter blocked IPs in subjects of PTR, SRV question
+	// TODO: If dns response, filter blocked IPs in subjects of A, AAAA, CNAME, MX or NS records
+
+	return 0;
+
+}
+
+static __always_inline int is_dns_exfiltration(struct dnshdr *dns_header) {
+
+	// TODO: If dns question or response, filter out TXT records
+	// TODO: If dns question or response, filter out LOC records
+
+	return 0;
+
+}
+#endif
+
+static __always_inline int is_nmap_scan(struct tcphdr *tcp_header) {
+
+	if (
+			tcp_header->fin == 1
+			&& tcp_header->cwr == 0
+			&& tcp_header->ece == 0
+			&& tcp_header->ack == 0
+			&& tcp_header->psh == 0
+			&& tcp_header->rst == 0
+			&& tcp_header->syn == 0
+	) {
+		return 1;
+	}
+
+	return 0;
+
+}
+
+#ifdef ENABLE_DNSFILTER
+static __always_inline int parse_dns_question(struct xdp_md *ctx, struct dnshdr *dns_header, struct dnsquestion *dns_question, void *question_start) {
 
 	void *data_end = (void *)(long)ctx->data_end;
 	void *pointer = question_start;
 
-	__builtin_memset(&dns_question->name[0], 0, sizeof(dns_question->name));
+	// TODO: This causes bpftool errors
+	for (int i = 0; i < 512; i++) {
+		dns_question->name[i] = 0;
+	}
+
+	// TODO: This causes bpftool errors
 	dns_question->type = 0;
 	dns_question->class = 0;
 
@@ -68,8 +115,14 @@ static void parse_dns_question(struct xdp_md *ctx, struct dnshdr *dns_header, st
 
 	}
 
-};
+	if (dns_question->type != 0) {
+		return 1;
+	}
 
+	return 0;
+
+};
+#endif
 
 
 SEC("xdp_prog")
@@ -90,7 +143,9 @@ int xdp_prog_main(struct xdp_md *ctx) {
 	struct udphdr *udp_header = NULL;
 	struct tcphdr *tcp_header = NULL;
 	struct icmphdr *icmp_header = NULL;
+#ifdef ENABLE_DNSFILTER
 	struct dnshdr *dns_header = NULL;
+#endif
 
 	__u8 *blocked_ip = NULL;
 	__u32 ipv4_address = 0;
@@ -100,7 +155,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 	__u16 ipv4_port = 0;
 	__u16 ipv6_port = 0;
 
-	if (ethernet_header->h_proto == __bpf_htons(ETH_P_IPV6)) {
+	if (ethernet_header->h_proto == ETH_P_IPV6) {
 
 		if (data + sizeof(*ethernet_header) + sizeof(struct ipv6hdr) < data_end) {
 
@@ -122,9 +177,9 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				udp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv6_header));
 
-				if (udp_header) {
+				if (udp_header + 1 <= (struct udphdr *)data_end) {
 
-					ipv6_port = udp_header->dest;
+					ipv6_port = __bpf_htons(udp_header->dest);
 
 					if (ipv6_port != 0) {
 
@@ -138,15 +193,21 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				}
 
+#ifdef ENABLE_DNSFILTER
 				// TODO: DNS Filtering
+#endif
 
 			} else if (ipv6_header->nexthdr == IPPROTO_TCP) {
 
 				tcp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv6_header));
 
-				if (tcp_header) {
+				if (tcp_header + 1 <= (struct tcphdr *)data_end) {
 
-					ipv6_port = tcp_header->dest;
+					if (is_nmap_scan(tcp_header)) {
+						return XDP_DROP;
+					}
+
+					ipv6_port = __bpf_htons(tcp_header->dest);
 
 					if (ipv6_port != 0) {
 
@@ -164,7 +225,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				icmp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv6_header));
 
-				if (icmp_header) {
+				if (icmp_header + 1 <= (struct icmphdr *)data_end) {
 
 					if (
 						icmp_header->type == 0 // echo reply
@@ -209,7 +270,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				icmp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv6_header));
 
-				if (icmp_header) {
+				if (icmp_header + 1 <= (struct icmphdr *)data_end) {
 
 					if (
 						icmp_header->type == 0 // echo reply
@@ -244,7 +305,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 			return XDP_DROP;
 		}
 
-	} else if (ethernet_header->h_proto == __bpf_htons(ETH_P_IP)) {
+	} else if (ethernet_header->h_proto == ETH_P_IP) {
 
 		if (data + sizeof(*ethernet_header) + sizeof(struct iphdr) < data_end) {
 
@@ -266,9 +327,9 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				udp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv4_header));
 
-				if (udp_header) {
+				if (udp_header + 1 <= (struct udphdr *)data_end) {
 
-					ipv4_port = udp_header->dest;
+					ipv4_port = __bpf_htons(udp_header->dest);
 
 					if (ipv4_port != 0) {
 
@@ -280,6 +341,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 					}
 
+#ifdef ENABLE_DNSFILTER
 					if (data + sizeof(*ethernet_header) + sizeof(*ipv4_header) + sizeof(*udp_header) + sizeof(struct dnshdr) < data_end) {
 
 						dns_header = (data + sizeof(*ethernet_header) + sizeof(*ipv4_header) + sizeof(*udp_header));
@@ -327,15 +389,21 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 					}
 
+#endif
+
 				}
 
 			} else if (ipv4_header->protocol == IPPROTO_TCP) {
 
 				tcp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv4_header));
 
-				if (tcp_header) {
+				if (tcp_header + 1 <= (struct tcphdr *)data_end) {
 
-					ipv4_port = tcp_header->dest;
+					if (is_nmap_scan(tcp_header)) {
+						return XDP_DROP;
+					}
+
+					ipv4_port = __bpf_htons(tcp_header->dest);
 
 					if (ipv4_port != 0) {
 
@@ -353,7 +421,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				icmp_header = (data + sizeof(*ethernet_header) + sizeof(*ipv4_header));
 
-				if (icmp_header) {
+				if (icmp_header + 1 <= (struct icmphdr *)data_end) {
 
 					if (
 						icmp_header->type == 0 // echo reply
@@ -388,15 +456,15 @@ int xdp_prog_main(struct xdp_md *ctx) {
 			return XDP_DROP;
 		}
 
-	} else if (ethernet_header->h_proto == __bpf_htons(ETH_P_CAN)) {
+	} else if (ethernet_header->h_proto == ETH_P_CAN) {
 
 		// TODO
 
-	} else if (ethernet_header->h_proto == __bpf_htons(ETH_P_CANFD)) {
+	} else if (ethernet_header->h_proto == ETH_P_CANFD) {
 
 		// TODO
 
-	} else if (ethernet_header->h_proto == __bpf_htons(ETH_P_CANXL)) {
+	} else if (ethernet_header->h_proto == ETH_P_CANXL) {
 
 		// TODO
 
