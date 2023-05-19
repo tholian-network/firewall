@@ -1,17 +1,9 @@
 package ebpf
 
+import "github.com/cilium/ebpf"
 import "tholian-endpoint/console"
 import "tholian-endpoint/structs"
-
-func permit(ip string, port uint16) bool {
-
-	var result bool = false
-
-	// TODO: BPF map remove existing entry
-
-	return result
-
-}
+import "strings"
 
 func PermitNetwork(network structs.Network) bool {
 
@@ -22,16 +14,58 @@ func PermitNetwork(network structs.Network) bool {
 		for a := 0; a < len(network.Addresses); a++ {
 
 			shost := network.Addresses[a].IP
-			sport := uint16(0)
 
-			if isForbidden(shost) {
+			if isIPv6(shost) {
 
-				console.Info("adapters/ebpf: Permit Network \"" + shost + "\"")
-				result = permit(shost, sport)
+				if isForbiddenIPv6(shost) {
 
-			} else {
+					if strings.HasPrefix(shost, "[") && strings.HasSuffix(shost, "]") {
+						console.Info("adapters/ebpf: Permit Network \"" + shost + "\"")
+					} else {
+						console.Info("adapters/ebpf: Permit Network \"[" + shost + "]\"")
+					}
 
-				result = true
+					if BPF.IPv6Bans != nil {
+
+						err := BPF.IPv6Bans.Delete(toIPv6(shost))
+
+						if err == nil {
+							result = true
+						} else if err == ebpf.ErrKeyNotExist {
+							result = true
+						}
+
+					}
+
+				} else {
+
+					result = true
+
+				}
+
+			} else if isIPv4(shost) {
+
+				if isForbiddenIPv4(shost) {
+
+					console.Info("adapters/ebpf: Permit Network \"" + shost + "\"")
+
+					if BPF.IPv4Bans != nil {
+
+						err := BPF.IPv4Bans.Delete(toIPv4(shost))
+
+						if err == nil {
+							result = true
+						} else if err == ebpf.ErrKeyNotExist {
+							result = true
+						}
+
+					}
+
+				} else {
+
+					result = true
+
+				}
 
 			}
 

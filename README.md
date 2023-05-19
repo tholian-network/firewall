@@ -14,39 +14,35 @@ sudo go run ./main.go;
 ```
 
 
-# Dependencies
+# Tasks
 
-- [ ] Use `github.com/cilium/ebpf` as userspace API
+All DNS filtering functionality is hidden behind the compile flag `ENABLE_DNSFILTER`
+which has to be added to the `make.sh` file inside the `build_ebpf()` function.
 
-# Features
+The [BPF kernel module](./kernel/ebpf/module.c) needs the additional featureset:
 
-- [ ] Be able to block network traffic from a specific IPv4
-- [ ] Be able to allow network traffic from a specific IPv4
-
-- [ ] Be able to block network traffic from a specific IPv6
-- [ ] Be able to allow network traffic from a specific IPv6
-
-- [ ] Be able to block network traffic from a specific domain (block DNS requests/responses to/from that domain)
-- [ ] Be able to allow network traffic from a specific domain
-
-# TODO List of things to implement
-
-In the eBPF [module.c](./kernel/ebpf/module.c):
-
-- [ ] Fix the eBPF kernel module and the BPF maps (which might be dependent on network byte order or host byte order)
 - [ ] Add the `ENABLE_DNSFILTER` flag to the `build_ebpf()` method in the `make.sh`
-- [ ] Implement the `parse_dns_question()` which is incorrectly implemented and doesn't run through the eBPF verifier
-- [ ] Implement the `is_dns_exfiltration()` method and integrate it for UDP/DNS requests
-- [ ] Implement the `is_malicious_dns_packet()` method and integrate it for UDP/DNS requests
+- [ ] A method to parse DNS headers, which is defined inside [module.h](./kernel/ebpf/module.h) as the `parse_dnshdr()` method.
+- [ ] A method to parse DNS questions, answers and records as separate structs
+- [x] Integration with the `xdp` program to filter out all requests to DNS servers which are a blocked IP (automatically blocked inside the UDP relevant code)
+- [ ] Integration with the `xdp` program to filter out all responses that contain records that point to IPs which are blocked
+- [ ] Integration with the `bpf_map` to allow to filter out specific `domains` (use `domain_bans` as the BPF map name)
 
-In [ForbidNetwork.go](./source/adapters/mitigations/ForbidNetwork.go):
+The code must be failsafe and allow arbitrary future DNS packets to go through undetected.
 
-- [ ] Implement the `isForbidden()` method to lookup the BPF maps correctly
-- [ ] Implement the `forbid()` method to create a BPF map entry
-- [ ] Implement the `ForbidNetwork()` method
+The following DNS responses must be parse-able:
 
-In [PermitNetwork.go](./source/adapters/mitigations/PermitNetwork.go):
+- [ ] The parsing method needs support for DNS message compression
+- [ ] The parsing method must not be vulnerable to DNS NAMEWRECK vulnerability (not allow buffer or stack overflows by modifying the DNS pointer field (abusing `0xc0` into a loop)
+- [ ] Support for `A` records (IPv4)
+- [ ] Support for `AAAA` records (IPv6)
+- [ ] Support for `MX` records (domains)
+- [ ] Support for `PTR` records
+- [ ] Support for `SRV` records
+- [ ] Support for `TXT` records (which are used for DNS exfiltration)
 
-- [ ] Implement the `permit()` method to delete a BPF map entry
-- [ ] Implement the `PermitNetwork()` method
+
+# License
+
+Proprietary
 

@@ -1,35 +1,63 @@
 package ebpf
 
+import "github.com/cilium/ebpf"
 import "tholian-endpoint/console"
 import "tholian-endpoint/structs"
+import "strings"
 
-func forbid(ip string, port uint16) bool {
+func isForbiddenIPv4(key string) bool {
 
 	var result bool = false
 
-	// TODO: BPF map create new entry
+	if isIPv4(key) == true {
+
+		if BPF.IPv4Bans != nil {
+
+			var value uint8;
+
+			err := BPF.IPv4Bans.Lookup(toIPv4(key), &value)
+
+			if err == nil {
+
+				if value == 1 {
+					result = true
+				}
+
+			} else if err == ebpf.ErrKeyNotExist {
+				result = false
+			}
+
+		}
+
+	}
 
 	return result
 
 }
 
-func isForbidden(ip string) bool {
+func isForbiddenIPv6(key string) bool {
 
 	var result bool = false
 
-	// TODO: Implement this using the BPF MAP lookups
+	if isIPv6(key) == true {
 
-	if isIPv6(ip) == true {
+		if BPF.IPv6Bans != nil {
 
-		// TODO: BPF map lookup for ipv6_bans
+			var value uint8;
 
-	} else if isIPv4(ip) == true {
+			err := BPF.IPv6Bans.Lookup(toIPv6(key), &value)
 
-		// TODO: BPF map lookup for ipv4_bans
+			if err == nil {
 
-	} else if isDomain(ip) == true {
+				if value == 1 {
+					result = true
+				}
 
-		// TODO: BPF map lookup for domain_bans
+			} else if err == ebpf.ErrKeyNotExist {
+				result = false
+			}
+
+		}
 
 	}
 
@@ -46,16 +74,54 @@ func ForbidNetwork(network structs.Network) bool {
 		for a := 0; a < len(network.Addresses); a++ {
 
 			shost := network.Addresses[a].IP
-			sport := uint16(0)
 
-			if isForbidden(shost) {
+			if isIPv6(shost) {
 
-				result = true
+				if isForbiddenIPv6(shost) {
 
-			} else {
+					result = true
 
-				console.Info("adapters/ebpf: Forbid Network \"" + shost + "\"")
-				result = forbid(shost, sport)
+				} else {
+
+					if strings.HasPrefix(shost, "[") && strings.HasSuffix(shost, "]") {
+						console.Warn("adapters/ebpf: Forbid Network \"" + shost + "\"")
+					} else {
+						console.Warn("adapters/ebpf: Forbid Network \"[" + shost + "]\"")
+					}
+
+					if BPF.IPv6Bans != nil {
+
+						err := BPF.IPv6Bans.Update(toIPv6(shost), uint8(1), ebpf.UpdateAny)
+
+						if err == nil {
+							result = true
+						}
+
+					}
+
+				}
+
+			} else if isIPv4(shost) {
+
+				if isForbiddenIPv4(shost) {
+
+					result = true
+
+				} else {
+
+					console.Warn("adapters/ebpf: Forbid Network \"" + shost + "\"")
+
+					if BPF.IPv4Bans != nil {
+
+						err := BPF.IPv4Bans.Update(toIPv4(shost), uint8(1), ebpf.UpdateAny)
+
+						if err == nil {
+							result = true
+						}
+
+					}
+
+				}
 
 			}
 

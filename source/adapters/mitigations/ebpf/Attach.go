@@ -5,24 +5,34 @@ import "net"
 
 func Attach(name string) bool {
 
-	var result bool = false
+	_, ok := LINKS[name]
 
-	iface, err1 := net.InterfaceByName(name)
+	if ok == true {
 
-	if err1 == nil {
+		return true
 
-		ref, err2 := link.AttachXDP(link.XDPOptions{
-			Program:   BPF.Program,
-			Interface: iface.Index,
-		})
+	} else {
 
-		if err2 == nil {
-			defer ref.Close()
-			result = true
+		var result bool = false
+
+		iface, err1 := net.InterfaceByName(name)
+
+		if err1 == nil {
+
+			ref, err2 := link.AttachXDP(link.XDPOptions{
+				Program:   BPF.Program,
+				Interface: iface.Index,
+			})
+
+			if err2 == nil {
+				LINKS[name] = &ref
+				result = true
+			}
+
 		}
 
-	}
+		return result
 
-	return result
+	}
 
 }

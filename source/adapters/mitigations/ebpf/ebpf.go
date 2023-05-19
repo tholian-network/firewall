@@ -1,6 +1,8 @@
 package ebpf
 
+import "tholian-endpoint/console"
 import "github.com/cilium/ebpf"
+import "github.com/cilium/ebpf/link"
 import "bytes"
 import "encoding/binary"
 import "net"
@@ -15,6 +17,8 @@ var BPF struct {
 	IPv6Bans *ebpf.Map     `ebpf:"ipv6_bans"`
 	PortBans *ebpf.Map     `ebpf:"port_bans"`
 }
+
+var LINKS map[string]*link.Link
 
 var BPF_SPECIFICATIONS = ebpf.CollectionSpec{
 	Maps: map[string]*ebpf.MapSpec{
@@ -47,6 +51,8 @@ var BPF_SPECIFICATIONS = ebpf.CollectionSpec{
 
 func init() {
 
+	LINKS = make(map[string]*link.Link)
+
 	reader := bytes.NewReader(BPF_MODULE)
 	spec, err1 := ebpf.LoadCollectionSpecFromReader(reader)
 
@@ -57,10 +63,12 @@ func init() {
 		if err2 == nil {
 			SUPPORTED = true
 		} else {
+			console.Error(err2.Error())
 			SUPPORTED = false
 		}
 
 	} else {
+		console.Error(err1.Error())
 		SUPPORTED = false
 	}
 
@@ -152,22 +160,15 @@ func isIPv4(value string) bool {
 
 }
 
-func toIPv4(value string) uint32 {
+func toIPv4(value string) []byte {
 
-	var result uint32
+	result := make([]byte, 4)
+	buffer := net.ParseIP(value).To4()
 
-	if strings.Contains(value, ".") {
+	if buffer != nil {
 
-		var chunks = strings.Split(value, ".")
-
-		if len(chunks) == 4 {
-
-			// buffer := bytes.NewBuffer(net.ParseIP(value).To4())
-			// binary.Read(buffer, binary.BigEndian, &result)
-			buffer := bytes.NewBuffer(net.ParseIP(value).To4())
-			binary.Read(buffer, binary.LittleEndian, &result)
-
-		}
+		tmp := bytes.NewBuffer(buffer)
+		binary.Read(tmp, binary.BigEndian, &result)
 
 	}
 
@@ -177,7 +178,29 @@ func toIPv4(value string) uint32 {
 
 func isIPv6(value string) bool {
 
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+	if strings.HasPrefix(value, "[") && strings.Contains(value, ":") && strings.HasSuffix(value, "]") {
+
+		var chunks = strings.Split(value[1:len(value)-1], ":")
+		var valid bool = true
+
+		if len(chunks) == 8 {
+
+			for c := 0; c < len(chunks); c++ {
+
+				_, err := strconv.ParseUint(chunks[c], 16, 64)
+
+				if err != nil {
+					valid = false
+					break
+				}
+
+			}
+
+		}
+
+		return valid
+
+	} else if strings.Contains(value, ":") {
 
 		var chunks = strings.Split(value[1:len(value)-1], ":")
 		var valid bool = true
@@ -202,5 +225,35 @@ func isIPv6(value string) bool {
 	}
 
 	return false
+
+}
+
+func toIPv6(value string) []byte {
+
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		value = value[1:len(value)-1]
+	}
+
+	result := make([]byte, 16)
+	buffer := net.ParseIP(value).To16()
+
+	if buffer != nil {
+
+		tmp := bytes.NewBuffer(buffer)
+		binary.Read(tmp, binary.BigEndian, &result)
+
+	}
+
+	return result
+
+}
+
+func toPort(value uint16) []byte {
+
+	result := make([]byte, 2)
+
+	binary.BigEndian.PutUint16(result, value)
+
+	return result
 
 }
