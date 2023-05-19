@@ -1,7 +1,5 @@
 package structs
 
-import "tholian-endpoint/console"
-import "tholian-endpoint/utils"
 import "strconv"
 import "strings"
 
@@ -37,9 +35,9 @@ func isHardware(value string) bool {
 }
 
 type Network struct {
-	Name      string    `json:"name"`
-	Hardware  string    `json:"hardware"`
-	Addresses []Address `json:"addresses"`
+	Name     string   `json:"name"`
+	Hardware string   `json:"hardware"`
+	Sockets  []Socket `json:"sockets"`
 }
 
 func NewNetwork(name string, hardware string) Network {
@@ -48,31 +46,9 @@ func NewNetwork(name string, hardware string) Network {
 
 	network.SetName(name)
 	network.SetHardware(hardware)
+	network.Sockets = make([]Socket, 0)
 
 	return network
-
-}
-
-func (network *Network) Debug() {
-
-	if network.Name != "" {
-
-		if isHardware(network.Hardware) == false {
-			console.Error("networks/" + network.Name + ": Invalid Hardware MAC " + network.Hardware)
-		}
-
-		for a := 0; a < len(network.Addresses); a++ {
-
-			var address = network.Addresses[a]
-
-			if address.IsValid() == false {
-				console.Error("networks/" + network.Name + ": Invalid Address")
-				console.Error(utils.ToJSON(address))
-			}
-
-		}
-
-	}
 
 }
 
@@ -84,9 +60,9 @@ func (network *Network) IsValid() bool {
 
 			var result bool = true
 
-			for a := 0; a < len(network.Addresses); a++ {
+			for s := 0; s < len(network.Sockets); s++ {
 
-				if network.Addresses[a].IsValid() == false {
+				if network.Sockets[s].IsValid() == false {
 					result = false
 					break
 				}
@@ -103,24 +79,6 @@ func (network *Network) IsValid() bool {
 
 }
 
-func (network *Network) SetAddresses(values []string) {
-
-	var addresses []Address
-
-	for v := 0; v < len(values); v++ {
-
-		var address = NewAddress(values[v], "")
-
-		if address.IsValid() == true {
-			addresses = append(addresses, address)
-		}
-
-	}
-
-	network.Addresses = addresses
-
-}
-
 func (network *Network) SetHardware(value string) {
 
 	if isHardware(value) == true {
@@ -131,4 +89,58 @@ func (network *Network) SetHardware(value string) {
 
 func (network *Network) SetName(value string) {
 	network.Name = strings.TrimSpace(value)
+}
+
+func (network *Network) AddSocket(value Socket) {
+
+	var found bool = false
+
+	for s := 0; s < len(network.Sockets); s++ {
+
+		if network.Sockets[s].Host == value.Host && network.Sockets[s].Port == value.Port {
+			found = true
+			break
+		}
+
+	}
+
+	if found == false && value.IsValid() {
+		network.Sockets = append(network.Sockets, value)
+	}
+
+}
+
+func (network *Network) RemoveSocket(value Socket) {
+
+	var index int = -1
+
+	for s := 0; s < len(network.Sockets); s++ {
+
+		if network.Sockets[s].Host == value.Host && network.Sockets[s].Port == value.Port {
+			index = s
+			break
+		}
+
+	}
+
+	if index != -1 {
+		network.Sockets = append(network.Sockets[:index], network.Sockets[index+1:]...)
+	}
+
+}
+
+func (network *Network) SetSockets(values []Socket) {
+
+	var sockets []Socket
+
+	for v := 0; v < len(values); v++ {
+
+		if values[v].IsValid() == true {
+			sockets = append(sockets, values[v])
+		}
+
+	}
+
+	network.Sockets = sockets
+
 }

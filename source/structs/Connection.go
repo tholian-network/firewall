@@ -1,50 +1,18 @@
 package structs
 
-type SocketAddress struct {
-	Host string `json:"host"`
-	Port uint16 `json:"port"`
-}
-
-func NewSocketAddress() SocketAddress {
-
-	var socketaddress SocketAddress
-
-	socketaddress.Host = "0.0.0.0"
-	socketaddress.Port = 0
-
-	return socketaddress
-
-}
-
-func (socketaddress *SocketAddress) IsValid() bool {
-
-	var result bool = true
-
-	if socketaddress.Host == "" || socketaddress.Host == "0.0.0.0" {
-		result = false
-	}
-
-	if socketaddress.Port == 0 {
-		result = false
-	}
-
-	return result
-
-}
-
 type Connection struct {
-	Source   SocketAddress `json:"source"`
-	Target   SocketAddress `json:"target"`
-	Protocol string        `json:"protocol"`
-	Type     string        `json:"type"`
+	Source   Socket `json:"source"`
+	Target   Socket `json:"target"`
+	Protocol string `json:"protocol"`
+	Type     string `json:"type"`
 }
 
 func NewConnection() Connection {
 
 	var connection Connection
 
-	connection.Source = NewSocketAddress()
-	connection.Target = NewSocketAddress()
+	connection.Source = NewSocket("0.0.0.0", 0)
+	connection.Target = NewSocket("0.0.0.0", 0)
 
 	return connection
 
@@ -52,89 +20,96 @@ func NewConnection() Connection {
 
 func (connection *Connection) IsValid() bool {
 
+	var result bool = false
+
 	if connection.Type == "client" {
 
-		var result bool = true
+		result = true
 
-		if connection.Source.Host == "0.0.0.0" || connection.Source.Port == 0 {
-			result = false
+		if connection.Source.Type == "ipv4" && connection.Target.Type == "ipv4" {
+
+			if connection.Source.Host == "0.0.0.0" || connection.Source.Port == 0 {
+				result = false
+			}
+
+			if connection.Target.Host == "0.0.0.0" || connection.Target.Port == 0 {
+				result = false
+			}
+
+		} else if connection.Source.Type == "ipv6" && connection.Target.Type == "ipv6" {
+
+			if connection.Source.Host == "[0000:0000:0000:0000:0000:0000:0000:0000]" || connection.Source.Port == 0 {
+				result = false
+			}
+
+			if connection.Target.Host == "[0000:0000:0000:0000:0000:0000:0000:0000]" || connection.Target.Port == 0 {
+				result = false
+			}
+
 		}
-
-		if connection.Target.Host == "0.0.0.0" || connection.Target.Port == 0 {
-			result = false
-		}
-
-		if connection.Protocol != "tcp" && connection.Protocol != "udp" {
-			result = false
-		}
-
-		return result
 
 	} else if connection.Type == "server" {
 
-		var result bool = true
+		if connection.Target.Type == "ipv4" {
 
-		// Source Host can be anything
-		// (0.0.0.0 is for listeners with unbound network hosts)
-		if connection.Source.Port == 0 {
-			result = false
+			// servers can be bound to 0.0.0.0 host
+			if connection.Target.Port != 0 {
+				result = true
+			}
+
+		} else if connection.Target.Type == "ipv6" {
+
+			// servers can be bound to ::0 host
+			if connection.Target.Port != 0 {
+				result = true
+			}
+
 		}
 
-		// Target Host has to be 0.0.0.0 or [::]
-		if connection.Target.Host != "0.0.0.0" && connection.Target.Host != "[0000:0000:0000:0000:0000:0000:0000:0000]" {
-			result = false
-		}
+	} else if connection.Type == "peer" {
 
-		if connection.Protocol != "tcp" && connection.Protocol != "udp" {
-			result = false
-		}
+		result = true
 
-		return result
+		if connection.Source.Type == "ipv4" && connection.Target.Type == "ipv4" {
+
+			if connection.Source.Host == "0.0.0.0" || connection.Source.Port == 0 {
+				result = false
+			}
+
+			if connection.Target.Host == "0.0.0.0" || connection.Target.Port == 0 {
+				result = false
+			}
+
+		} else if connection.Source.Type == "ipv6" && connection.Target.Type == "ipv6" {
+
+			if connection.Source.Host == "[0000:0000:0000:0000:0000:0000:0000:0000]" || connection.Source.Port == 0 {
+				result = false
+			}
+
+			if connection.Target.Host == "[0000:0000:0000:0000:0000:0000:0000:0000]" || connection.Target.Port == 0 {
+				result = false
+			}
+
+		}
 
 	}
 
-	return false
+	return result
 
 }
 
-func (connection *Connection) SetSource(ip_or_domain string, port uint16) {
+func (connection *Connection) SetSource(value Socket) {
 
-	var source = NewSocketAddress()
-
-	if isIPv6(ip_or_domain) {
-		source.Host = ip_or_domain
-		source.Port = port
-	} else if isIPv4(ip_or_domain) {
-		source.Host = ip_or_domain
-		source.Port = port
-	} else if isDomain(ip_or_domain) {
-		source.Host = ip_or_domain
-		source.Port = port
-	}
-
-	if source.Port != 0 {
-		connection.Source = source
+	if value.IsValid() {
+		connection.Source = value
 	}
 
 }
 
-func (connection *Connection) SetTarget(ip_or_domain string, port uint16) {
+func (connection *Connection) SetTarget(value Socket) {
 
-	var target = NewSocketAddress()
-
-	if isIPv6(ip_or_domain) {
-		target.Host = ip_or_domain
-		target.Port = port
-	} else if isIPv4(ip_or_domain) {
-		target.Host = ip_or_domain
-		target.Port = port
-	} else if isDomain(ip_or_domain) {
-		target.Host = ip_or_domain
-		target.Port = port
-	}
-
-	if target.Port != 0 {
-		connection.Target = target
+	if value.IsValid() {
+		connection.Target = value
 	}
 
 }

@@ -1,5 +1,6 @@
 package structs
 
+import "tholian-endpoint/utils"
 import "strconv"
 import "strings"
 
@@ -47,6 +48,10 @@ func toIPv4(value string) string {
 
 func toIPv6(value string) string {
 
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		value = value[1:len(value)-1]
+	}
+
 	if strings.Contains(value, "::") {
 
 		var tmp = strings.Split(value, "::")
@@ -88,7 +93,7 @@ func toIPv6(value string) string {
 
 		}
 
-		return strings.Join(complete, ":")
+		return "[" + strings.Join(complete, ":") + "]"
 
 	} else if strings.Contains(value, ":") {
 
@@ -111,76 +116,11 @@ func toIPv6(value string) string {
 
 		}
 
-		return strings.Join(complete, ":")
+		return "[" + strings.Join(complete, ":") + "]"
 
 	}
 
 	return ""
-
-}
-
-func toMaskv4(value string) string {
-
-	var mask = []string{"0", "0", "0", "0", "0", "0", "0", "0"}
-	var valid bool = true
-
-	if len(value) == 8 {
-
-		for v := 0; v < len(value); v++ {
-
-			_, err := strconv.ParseUint(string(value[v]), 16, 64)
-
-			if err != nil {
-				valid = false
-				break
-			} else {
-				mask[v] = string(value[v])
-			}
-
-		}
-
-	}
-
-	if valid == true {
-		return strings.Join(mask, "")
-	}
-
-	return strings.Join(mask, "")
-
-}
-
-func toMaskv6(value string) string {
-
-	var mask = []string{
-		"0", "0", "0", "0", "0", "0", "0", "0",
-		"0", "0", "0", "0", "0", "0", "0", "0",
-		"0", "0", "0", "0", "0", "0", "0", "0",
-		"0", "0", "0", "0", "0", "0", "0", "0",
-	}
-	var valid bool = true
-
-	if len(value) == 32 {
-
-		for v := 0; v < len(value); v++ {
-
-			_, err := strconv.ParseUint(string(value[v]), 16, 64)
-
-			if err != nil {
-				valid = false
-				break
-			} else {
-				mask[v] = string(value[v])
-			}
-
-		}
-
-	}
-
-	if valid == true {
-		return strings.Join(mask, "")
-	}
-
-	return strings.Join(mask, "")
 
 }
 
@@ -267,6 +207,10 @@ func toScopev4(value string) string {
 
 func toScopev6(value string) string {
 
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		value = value[1:len(value)-1]
+	}
+
 	var scope string = "public"
 	var PRIVATE_V6 = []string{
 
@@ -289,155 +233,117 @@ func toScopev6(value string) string {
 
 }
 
-type Address struct {
-	IP    string `json:"ip"`
-	Mask  string `json:"mask"`
+type Socket struct {
+	Host  string `json:"host"`
+	Port  uint16 `json:"port"`
 	Scope string `json:"scope"`
 	Type  string `json:"type"`
 }
 
-func NewAddress(ip_value string, mask_value string) Address {
+func NewSocket(host string, port uint16) Socket {
 
-	var address Address
+	var socket Socket
 
-	if strings.Contains(ip_value, ":") {
+	socket.SetHost(host)
+	socket.SetPort(port)
 
-		var ip = toIPv6(ip_value)
-		var mask = toMaskv6(mask_value)
-		var scope = toScopev6(ip)
-
-		if ip != "" && scope != "" {
-			address.IP = ip
-			address.Mask = mask
-			address.Scope = scope
-			address.Type = "v6"
-		}
-
-	} else if strings.Contains(ip_value, ".") {
-
-		var ip = toIPv4(ip_value)
-		var mask = toMaskv4(mask_value)
-		var scope = toScopev4(ip)
-
-		if ip != "" && mask != "" && scope != "" {
-			address.IP = ip
-			address.Mask = mask
-			address.Scope = scope
-			address.Type = "v4"
-		}
-
-	}
-
-	return address
+	return socket
 
 }
 
-func (address *Address) IsValid() bool {
+func (socket *Socket) IsValid() bool {
 
-	if address.IP != "" {
+	var result bool = false
 
-		if address.Type == "v4" {
+	if socket.Type == "ipv4" {
 
-			var result bool = true
+		if socket.Host == "0.0.0.0" {
 
-			if address.IP != toIPv4(address.IP) {
-				result = false
+			if socket.Port != 0 {
+				result = true
+			} else {
+				result = true
 			}
 
-			if address.Mask != toMaskv4(address.Mask) {
-				result = false
+		} else if socket.Host != "0.0.0.0" {
+
+			result = true
+
+		}
+
+	} else if socket.Type == "ipv6" {
+
+		if socket.Host == "[0000:0000:0000:0000:0000:0000:0000:0000]" {
+
+			if socket.Port != 0 {
+				result = true
+			} else {
+				result = true
 			}
 
-			if address.Scope != toScopev4(address.IP) {
-				result = false
+		} else if socket.Host != "[0000:0000:0000:0000:0000:0000:0000:0000]" {
+
+			if socket.Port != 0 {
+				result = true
+			} else {
+				result = true
 			}
 
-			return result
+		}
 
-		} else if address.Type == "v6" {
+	} else if socket.Type == "domain" {
 
-			var result bool = true
+		if socket.Host != "" {
 
-			if address.IP != toIPv6(address.IP) {
-				result = false
+			if socket.Port != 0 {
+				result = true
 			}
-
-			if address.Mask != toMaskv6(address.Mask) {
-				result = false
-			}
-
-			if address.Scope != toScopev6(address.IP) {
-				result = false
-			}
-
-			return result
 
 		}
 
 	}
 
-	return false
+	return result
 
 }
 
-func (address *Address) SetIP(value string) {
+func (socket *Socket) SetHost(value string) {
 
-	if strings.Contains(value, ":") {
+	if utils.IsIPv6(value) {
 
-		var ip = toIPv6(value)
-		var mask = toMaskv6("")
-		var scope = toScopev6(value)
+		socket.Host = toIPv6(value)
+		socket.Scope = toScopev6(value)
+		socket.Type = "ipv6"
 
-		if ip != "" {
-			address.IP = ip
-			address.Mask = mask
-			address.Scope = scope
-			address.Type = "v6"
-		}
+	} else if utils.IsIPv4(value) {
 
-	} else if strings.Contains(value, ".") {
+		socket.Host = toIPv4(value)
+		socket.Scope = toScopev4(value)
+		socket.Type = "ipv4"
 
-		var ip = toIPv4(value)
-		var mask = toMaskv4("")
-		var scope = toScopev4(value)
+	} else if utils.IsDomain(value) {
 
-		if ip != "" {
-			address.IP = ip
-			address.Mask = mask
-			address.Scope = scope
-			address.Type = "v4"
-		}
+		socket.Host = value
+		socket.Scope = "public"
+		socket.Type = "domain"
 
 	}
 
 }
 
-func (address *Address) SetMask(value string) {
+func (socket *Socket) SetPort(value uint16) {
 
-	if address.Type == "v6" {
-
-		var mask = toMaskv6(value)
-
-		if mask != "" {
-			address.Mask = mask
-		}
-
-	} else if address.Type == "v4" {
-
-		var mask = toMaskv4(value)
-
-		if mask != "" {
-			address.Mask = mask
-		}
-
+	// port 0 is used for host blocking
+	if value >= 0 && value < 65535 {
+		socket.Port = value
 	}
 
 }
 
-func (address *Address) SetScope(value string) {
+func (socket *Socket) SetScope(value string) {
 
 	if value == "private" || value == "public" {
-		address.Scope = value
+		socket.Scope = value
 	}
 
 }

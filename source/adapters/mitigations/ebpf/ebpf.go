@@ -1,53 +1,17 @@
 package ebpf
 
-import "tholian-endpoint/console"
 import "github.com/cilium/ebpf"
 import "github.com/cilium/ebpf/link"
+import "tholian-endpoint/console"
+import "tholian-endpoint/structs"
 import "bytes"
 import "encoding/binary"
 import "net"
-import "strconv"
 import "strings"
 
 var SUPPORTED bool
 
-var BPF struct {
-	Program  *ebpf.Program `ebpf:"xdp_prog_main"`
-	IPv4Bans *ebpf.Map     `ebpf:"ipv4_bans"`
-	IPv6Bans *ebpf.Map     `ebpf:"ipv6_bans"`
-	PortBans *ebpf.Map     `ebpf:"port_bans"`
-}
-
 var LINKS map[string]*link.Link
-
-var BPF_SPECIFICATIONS = ebpf.CollectionSpec{
-	Maps: map[string]*ebpf.MapSpec{
-		"ipv4_bans": {
-			Type:       ebpf.Hash,
-			KeySize:    4,
-			ValueSize:  1,
-			MaxEntries: 500000,
-		},
-		"ipv6_bans": {
-			Type:       ebpf.Hash,
-			KeySize:    16,
-			ValueSize:  1,
-			MaxEntries: 500000,
-		},
-		"port_bans": {
-			Type:       ebpf.Hash,
-			KeySize:    2,
-			ValueSize:  1,
-			MaxEntries: 65535,
-		},
-	},
-	Programs: map[string]*ebpf.ProgramSpec{
-		"xdp_prog_main": {
-			Type:    ebpf.XDP,
-			License: "GPL",
-		},
-	},
-}
 
 func init() {
 
@@ -74,89 +38,22 @@ func init() {
 
 }
 
-func isDomain(value string) bool {
+func toDomain(value string) []byte {
 
-	if strings.Contains(value, ".") {
+	result := make([]byte, 254)
+	buffer := []byte(value)
 
-		var chunks = strings.Split(value, ".")
-		var valid bool = true
+	var max int = 254
 
-		if len(chunks) >= 2 {
-
-			valid = true
-
-			for c := 0; c < len(chunks); c++ {
-
-				var chunk = chunks[c]
-
-				if len(chunk) >= 2 {
-					// Do Nothing
-				} else {
-					valid = false
-					break
-				}
-
-			}
-
-		} else if len(chunks) == 1 {
-
-			if len(chunks[0]) >= 3 {
-				valid = true
-			}
-
-		}
-
-		return valid
-
+	if len(buffer) < 254 {
+		max = len(buffer)
 	}
 
-	return false
-
-}
-
-func isPort(value string) bool {
-
-	if strings.HasPrefix(value, ":") {
-
-		num, err := strconv.Atoi(value[1:])
-
-		if err == nil && num >= 1 && num <= 65535 {
-			return true
-		}
-
+	for b := 0; b < max; b++ {
+		result[b] = buffer[b]
 	}
 
-	return false
-
-}
-
-func isIPv4(value string) bool {
-
-	if strings.Contains(value, ".") {
-
-		var chunks = strings.Split(value, ".")
-		var valid bool = true
-
-		if len(chunks) == 4 {
-
-			for c := 0; c < len(chunks); c++ {
-
-				_, err := strconv.ParseUint(chunks[c], 10, 8)
-
-				if err != nil {
-					valid = false
-					break
-				}
-
-			}
-
-		}
-
-		return valid
-
-	}
-
-	return false
+	return result
 
 }
 
@@ -173,58 +70,6 @@ func toIPv4(value string) []byte {
 	}
 
 	return result
-
-}
-
-func isIPv6(value string) bool {
-
-	if strings.HasPrefix(value, "[") && strings.Contains(value, ":") && strings.HasSuffix(value, "]") {
-
-		var chunks = strings.Split(value[1:len(value)-1], ":")
-		var valid bool = true
-
-		if len(chunks) == 8 {
-
-			for c := 0; c < len(chunks); c++ {
-
-				_, err := strconv.ParseUint(chunks[c], 16, 64)
-
-				if err != nil {
-					valid = false
-					break
-				}
-
-			}
-
-		}
-
-		return valid
-
-	} else if strings.Contains(value, ":") {
-
-		var chunks = strings.Split(value[1:len(value)-1], ":")
-		var valid bool = true
-
-		if len(chunks) == 8 {
-
-			for c := 0; c < len(chunks); c++ {
-
-				_, err := strconv.ParseUint(chunks[c], 16, 64)
-
-				if err != nil {
-					valid = false
-					break
-				}
-
-			}
-
-		}
-
-		return valid
-
-	}
-
-	return false
 
 }
 
@@ -253,6 +98,273 @@ func toPort(value uint16) []byte {
 	result := make([]byte, 2)
 
 	binary.BigEndian.PutUint16(result, value)
+
+	return result
+
+}
+
+func forbid(socket structs.Socket) bool {
+
+	var result bool = false
+
+	if socket.Type == "ipv4" {
+
+		if socket.Port != 0 {
+
+			var result_host bool = false
+			var result_port bool = false
+
+			if BPF.IPv4Bans != nil {
+
+				err := BPF.IPv4Bans.Update(toIPv4(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_host = true
+				}
+
+			}
+
+			if BPF.PortBans != nil {
+
+				err := BPF.PortBans.Update(toPort(socket.Port), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_port = true
+				}
+
+			}
+
+			if result_host == true && result_port == true {
+				result = true
+			}
+
+		} else {
+
+			if BPF.IPv4Bans != nil {
+
+				err := BPF.IPv4Bans.Update(toIPv4(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result = true
+				}
+
+			}
+
+		}
+
+	} else if socket.Type == "ipv6" {
+
+		if socket.Port != 0 {
+
+			var result_host bool = false
+			var result_port bool = false
+
+			if BPF.IPv6Bans != nil {
+
+				err := BPF.IPv6Bans.Update(toIPv6(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_host = true
+				}
+
+			}
+
+			if BPF.PortBans != nil {
+
+				err := BPF.PortBans.Update(toPort(socket.Port), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_port = true
+				}
+
+			}
+
+			if result_host == true && result_port == true {
+				result = true
+			}
+
+		} else {
+
+			if BPF.IPv6Bans != nil {
+
+				err := BPF.IPv6Bans.Update(toIPv6(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result = true
+				}
+
+			}
+
+		}
+
+	} else if socket.Type == "domain" {
+
+		if socket.Port != 0 {
+
+			var result_host bool = false
+			var result_port bool = false
+
+			if BPF.DomainBans != nil {
+
+				err := BPF.DomainBans.Update(toDomain(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_host = true
+				}
+
+			}
+
+			if BPF.PortBans != nil {
+
+				err := BPF.PortBans.Update(toPort(socket.Port), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result_port = true
+				}
+
+			}
+
+			if result_host == true && result_port == true {
+				result = true
+			}
+
+		} else {
+
+			if BPF.DomainBans != nil {
+
+				err := BPF.DomainBans.Update(toDomain(socket.Host), uint8(1), ebpf.UpdateAny)
+
+				if err == nil {
+					result = true
+				}
+
+			}
+
+		}
+
+	}
+
+	return result
+
+}
+
+func permit(socket structs.Socket) bool {
+
+	var result bool = false
+
+	if socket.Type == "ipv4" {
+
+		if BPF.IPv4Bans != nil {
+
+			err := BPF.IPv4Bans.Delete(toIPv4(socket.Host))
+
+			if err == nil {
+				result = true
+			} else if err == ebpf.ErrKeyNotExist {
+				result = true
+			}
+
+		}
+
+	} else if socket.Type == "ipv6" {
+
+		if BPF.IPv6Bans != nil {
+
+			err := BPF.IPv6Bans.Delete(toIPv6(socket.Host))
+
+			if err == nil {
+				result = true
+			} else if err == ebpf.ErrKeyNotExist {
+				result = true
+			}
+
+		}
+
+	} else if socket.Type == "domain" {
+
+		if BPF.DomainBans != nil {
+
+			err := BPF.DomainBans.Delete(toDomain(socket.Host))
+
+			if err == nil {
+				result = true
+			} else if err == ebpf.ErrKeyNotExist {
+				result = true
+			}
+
+		}
+
+	}
+
+	return result
+
+}
+
+func isForbidden(socket structs.Socket) bool {
+
+	var result bool = false
+
+	if socket.Type == "ipv4" {
+
+		if BPF.IPv4Bans != nil {
+
+			var value uint8;
+
+			err := BPF.IPv4Bans.Lookup(toIPv4(socket.Host), &value)
+
+			if err == nil {
+
+				if value == 1 {
+					result = true
+				}
+
+			} else if err == ebpf.ErrKeyNotExist {
+				result = false
+			}
+
+		}
+
+	} else if socket.Type == "ipv6" {
+
+		if BPF.IPv6Bans != nil {
+
+			var value uint8;
+
+			err := BPF.IPv6Bans.Lookup(toIPv6(socket.Host), &value)
+
+			if err == nil {
+
+				if value == 1 {
+					result = true
+				}
+
+			} else if err == ebpf.ErrKeyNotExist {
+				result = false
+			}
+
+		}
+
+	} else if socket.Type == "domain" {
+
+		if BPF.DomainBans != nil {
+
+			var value uint8;
+
+			err := BPF.DomainBans.Lookup(toDomain(socket.Host), &value)
+
+			if err == nil {
+
+				if value == 1 {
+					result = true
+				}
+
+			} else if err == ebpf.ErrKeyNotExist {
+				result = false
+			}
+
+		}
+
+	}
 
 	return result
 

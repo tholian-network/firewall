@@ -15,16 +15,16 @@
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 65535);
-	__type(key, __u16);  // port number, network byte order (big endian)
+	__uint(max_entries, 500000);
+	__uint(key, 254);    // FQDN, host byte order (little endian)
 	__type(value, __u8); // 1 = banned, 0 = unbanned
-} port_bans SEC(".maps");
+} domain_bans SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 500000);
-	__type(key, __u32); // ipv4 address, network byte order (big endian)
-	__type(value, __u8);         // 1 = banned, 0 = unbanned
+	__type(key, __u32);  // ipv4 address, network byte order (big endian)
+	__type(value, __u8); // 1 = banned, 0 = unbanned
 } ipv4_bans SEC(".maps");
 
 struct {
@@ -48,6 +48,15 @@ struct {
 	__type(value, __u8); // amount of warnings
 } ipv6_warnings SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 65535);
+	__type(key, __u16);  // port number, network byte order (big endian)
+	__type(value, __u8); // 1 = banned, 0 = unbanned
+} port_bans SEC(".maps");
+
+
+
 static __always_inline bool warn_ipv4(__u32 *address) {
 
 	__u8 *warnings_ipv4 = NULL;
@@ -65,8 +74,10 @@ static __always_inline bool warn_ipv4(__u32 *address) {
 		if (tmp > 16) {
 
 			__u8 banned = 1;
-
 			bpf_map_update_elem(&ipv4_bans, address, &banned, BPF_ANY);
+
+			tmp = 0;
+			bpf_map_update_elem(&ipv4_warnings, address, &tmp, BPF_ANY);
 
 		}
 
@@ -99,8 +110,10 @@ static __always_inline bool warn_ipv6(__u128 *address) {
 		if (tmp > 16) {
 
 			__u8 banned = 1;
-
 			bpf_map_update_elem(&ipv6_bans, address, &banned, BPF_ANY);
+
+			tmp = 0;
+			bpf_map_update_elem(&ipv6_warnings, address, &tmp, BPF_ANY);
 
 		}
 

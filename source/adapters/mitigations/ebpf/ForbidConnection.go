@@ -1,10 +1,8 @@
 package ebpf
 
-import "github.com/cilium/ebpf"
 import "tholian-endpoint/console"
 import "tholian-endpoint/structs"
 import "strconv"
-import "strings"
 
 func ForbidConnection(connection structs.Connection) bool {
 
@@ -16,56 +14,19 @@ func ForbidConnection(connection structs.Connection) bool {
 
 			// local client is connecting to remote server
 
-			dhost := connection.Target.Host
-			dport := connection.Target.Port
+			if isForbidden(connection.Target) {
 
-			if isIPv6(dhost) {
+				result = true
 
-				if isForbiddenIPv6(dhost) {
+			} else {
 
-					result = true
-
+				if connection.Target.Port != 0 {
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Target.Host + ":" + strconv.FormatUint(uint64(connection.Target.Port), 10) + "\"")
 				} else {
-
-					if strings.HasPrefix(dhost, "[") && strings.HasSuffix(dhost, "]") {
-						console.Warn("adapters/ebpf: Forbid Connection \"" + dhost + ":" + strconv.FormatUint(uint64(dport), 10) + "\"")
-					} else {
-						console.Warn("adapters/ebpf: Forbid Connection \"[" + dhost + "]:" + strconv.FormatUint(uint64(dport), 10) + "\"")
-					}
-
-					if BPF.PortBans != nil {
-
-						err := BPF.PortBans.Update(toPort(dport), uint8(1), ebpf.UpdateAny)
-
-						if err == nil {
-							result = true
-						}
-
-					}
-
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Target.Host + ":*\"")
 				}
 
-			} else if isIPv4(dhost) {
-
-				if isForbiddenIPv4(dhost) {
-
-					result = true
-
-				} else {
-
-					console.Info("adapters/ebpf: Forbid Connection \"" + dhost + ":" + strconv.FormatUint(uint64(dport), 10) + "\"")
-
-					if BPF.PortBans != nil {
-
-						err := BPF.PortBans.Update(toPort(dport), uint8(1), ebpf.UpdateAny)
-
-						if err == nil {
-							result = true
-						}
-
-					}
-
-				}
+				result = forbid(connection.Target)
 
 			}
 
@@ -73,57 +34,61 @@ func ForbidConnection(connection structs.Connection) bool {
 
 			// remote client is connecting to local server
 
-			shost := connection.Source.Host
-			sport := connection.Source.Port
+			if isForbidden(connection.Source) {
 
-			if isIPv6(shost) {
+				result = true
 
-				if isForbiddenIPv6(shost) {
+			} else {
 
-					result = true
-
+				if connection.Source.Port != 0 {
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Source.Host + ":" + strconv.FormatUint(uint64(connection.Source.Port), 10) + "\"")
 				} else {
-
-					if strings.HasPrefix(shost, "[") && strings.HasSuffix(shost, "]") {
-						console.Warn("adapters/ebpf: Forbid Connection \"" + shost + ":" + strconv.FormatUint(uint64(sport), 10) + "\"")
-					} else {
-						console.Warn("adapters/ebpf: Forbid Connection \"[" + shost + "]:" + strconv.FormatUint(uint64(sport), 10) + "\"")
-					}
-
-					if BPF.PortBans != nil {
-
-						err := BPF.PortBans.Update(toPort(sport), uint8(1), ebpf.UpdateAny)
-
-						if err == nil {
-							result = true
-						}
-
-					}
-
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Source.Host + ":*\"")
 				}
 
-			} else if isIPv4(shost) {
+				result = forbid(connection.Source)
 
-				if isForbiddenIPv4(shost) {
+			}
 
-					result = true
+		} else if connection.Type == "peer" {
 
+			var result_source bool = false
+			var result_target bool = false
+
+			if isForbidden(connection.Source) {
+
+				result_source = true
+
+			} else {
+
+				if connection.Source.Port != 0 {
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Source.Host + ":" + strconv.FormatUint(uint64(connection.Source.Port), 10) + "\"")
 				} else {
-
-					console.Info("adapters/ebpf: Forbid Connection \"" + shost + ":" + strconv.FormatUint(uint64(sport), 10) + "\"")
-
-					if BPF.PortBans != nil {
-
-						err := BPF.PortBans.Update(toPort(sport), uint8(1), ebpf.UpdateAny)
-
-						if err == nil {
-							result = true
-						}
-
-					}
-
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Source.Host + ":*\"")
 				}
 
+				result_source = forbid(connection.Source)
+
+			}
+
+			if isForbidden(connection.Target) {
+
+				result_target = true
+
+			} else {
+
+				if connection.Target.Port != 0 {
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Target.Host + ":" + strconv.FormatUint(uint64(connection.Target.Port), 10) + "\"")
+				} else {
+					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Target.Host + ":*\"")
+				}
+
+				result_target = forbid(connection.Target)
+
+			}
+
+			if result_source == true && result_target == true {
+				result = true
 			}
 
 		}
