@@ -54,7 +54,7 @@ func debugIPMap(bpfmap *goebpf.Map) {
 
 }
 
-func printPortMap(bpfmap *goebpf.Map) {
+func debugPortMap(bpfmap *goebpf.Map) {
 
 	var key []byte
 	var val uint8
@@ -123,7 +123,7 @@ func main() {
 				console.Group("Loop")
 				debugIPMap(ebpf.BPF.IPv4Bans)
 				debugIPMap(ebpf.BPF.IPv6Bans)
-				debugIPMap(ebpf.BPF.PortBans)
+				debugPortMap(ebpf.BPF.PortBans)
 				console.GroupEnd("")
 
 				time.Sleep(10 * time.Second)

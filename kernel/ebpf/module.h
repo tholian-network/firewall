@@ -280,26 +280,6 @@ static __always_inline int parse_udphdr(struct hdr_cursor *nh, void *data_end, s
 #ifdef ENABLE_DNSFILTER
 static __always_inline int parse_dnshdr(struct hdr_cursor *nh, void *data_end, struct dnshdr **dnshdr) {
 
-	static __always_inline int parse_dnshdr(struct hdr_cursor *nh, void *data_end, struct dnshdr **dnshdr, uint32_t *packet_len) {
-    struct dnshdr *dnsh = nh->pos;
-
-    if (dnsh + 1 > data_end) {
-        return -1; // DNS header is incomplete
-    }
-
-    *packet_len = ntohs(dnsh->len);
-
-    if (*packet_len > (data_end - nh->pos)) {
-        return -1; // DNS packet is incomplete
-    }
-
-    nh->pos = (uint8_t *)dnsh + *packet_len;
-    *dnshdr = dnsh;
-
-    return *packet_len;
-	}
-
-
 	int len;
 	struct dnshdr *dnsh = nh->pos;
 
