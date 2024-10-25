@@ -1,6 +1,6 @@
 package utils
 
-import "tholian-endpoint/console"
+import "tholian-firewall/console"
 import "compress/gzip"
 import "io/ioutil"
 import "os"

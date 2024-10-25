@@ -1,52 +1,19 @@
 package structs
 
-import "strconv"
+import "sort"
 import "strings"
 
-func isHardware(value string) bool {
-
-	if strings.Contains(value, ":") {
-
-		var tmp1 []string = strings.Split(value, ":")
-		var tmp2 []int
-
-		for t := 0; t < len(tmp1); t++ {
-
-			num, err := strconv.ParseUint(tmp1[t], 16, 8)
-
-			if err == nil {
-
-				if num >= 0 && num <= 255 {
-					tmp2 = append(tmp2, int(num))
-				}
-
-			}
-
-		}
-
-		if len(tmp1) == len(tmp2) {
-			return true
-		}
-
-	}
-
-	return false
-
-}
-
 type Network struct {
-	Name     string   `json:"name"`
-	Hardware string   `json:"hardware"`
-	Sockets  []Socket `json:"sockets"`
+	Name    string   `json:"name"`
+	Subnets []Subnet `json:"subnets"`
 }
 
-func NewNetwork(name string, hardware string) Network {
+func NewNetwork(name string) Network {
 
 	var network Network
 
 	network.SetName(name)
-	network.SetHardware(hardware)
-	network.Sockets = make([]Socket, 0)
+	network.Subnets = make([]Subnet, 0)
 
 	return network
 
@@ -56,22 +23,18 @@ func (network *Network) IsValid() bool {
 
 	if network.Name != "" {
 
-		if isHardware(network.Hardware) {
+		var result bool = true
 
-			var result bool = true
+		for s := 0; s < len(network.Subnets); s++ {
 
-			for s := 0; s < len(network.Sockets); s++ {
-
-				if network.Sockets[s].IsValid() == false {
-					result = false
-					break
-				}
-
+			if network.Subnets[s].IsValid() == false {
+				result = false
+				break
 			}
 
-			return result
-
 		}
+
+		return result
 
 	}
 
@@ -79,44 +42,40 @@ func (network *Network) IsValid() bool {
 
 }
 
-func (network *Network) SetHardware(value string) {
-
-	if isHardware(value) == true {
-		network.Hardware = value
-	}
-
-}
-
 func (network *Network) SetName(value string) {
 	network.Name = strings.TrimSpace(value)
 }
 
-func (network *Network) AddSocket(value Socket) {
+func (network *Network) AddSubnet(value Subnet) {
 
-	var found bool = false
+	if value.IsValid() {
 
-	for s := 0; s < len(network.Sockets); s++ {
+		var found bool = false
 
-		if network.Sockets[s].Host == value.Host && network.Sockets[s].Port == value.Port {
-			found = true
-			break
+		for s := 0; s < len(network.Subnets); s++ {
+
+			if network.Subnets[s].IsIdentical(value) {
+				found = true
+				break
+			}
+
+		}
+
+		if found == false {
+			network.Subnets = append(network.Subnets, value)
 		}
 
 	}
 
-	if found == false && value.IsValid() {
-		network.Sockets = append(network.Sockets, value)
-	}
-
 }
 
-func (network *Network) RemoveSocket(value Socket) {
+func (network *Network) RemoveSubnet(value Subnet) {
 
 	var index int = -1
 
-	for s := 0; s < len(network.Sockets); s++ {
+	for s := 0; s < len(network.Subnets); s++ {
 
-		if network.Sockets[s].Host == value.Host && network.Sockets[s].Port == value.Port {
+		if network.Subnets[s].IsIdentical(value) {
 			index = s
 			break
 		}
@@ -124,23 +83,40 @@ func (network *Network) RemoveSocket(value Socket) {
 	}
 
 	if index != -1 {
-		network.Sockets = append(network.Sockets[:index], network.Sockets[index+1:]...)
+		network.Subnets = append(network.Subnets[:index], network.Subnets[index+1:]...)
 	}
 
 }
 
-func (network *Network) SetSockets(values []Socket) {
+func (network *Network) SetSubnets(value []Subnet) {
 
-	var sockets []Socket
+	var filtered []Subnet
 
-	for v := 0; v < len(values); v++ {
+	for v := 0; v < len(value); v++ {
 
-		if values[v].IsValid() == true {
-			sockets = append(sockets, values[v])
+		if value[v].IsValid() {
+			filtered = append(filtered, value[v])
 		}
 
 	}
 
-	network.Sockets = sockets
+	sort.Slice(filtered, func(a int, b int) bool {
+
+		if filtered[a].Prefix == filtered[b].Prefix {
+
+			hash_a := filtered[a].Hash()
+			hash_b := filtered[b].Hash()
+
+			return hash_a < hash_b
+
+		} else {
+
+			return filtered[a].Prefix < filtered[b].Prefix
+
+		}
+
+	})
+
+	network.Subnets = filtered
 
 }

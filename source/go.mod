@@ -1,4 +1,4 @@
-module tholian-endpoint
+module tholian-firewall
 
 go 1.20
 
