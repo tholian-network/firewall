@@ -7,10 +7,10 @@ ROOT="$(pwd)";
 
 build_ebpf() {
 
-	cd "${ROOT}/kernel";
+	cd "${ROOT}/ebpf";
 
 	# TODO: Add -DENABLE_DNSFILTER once it's ready
-	${CLANG} -S -I"${ROOT}/kernel/headers" -target bpf -O2 -Wall -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types -Werror -emit-llvm -g -c -o "${ROOT}/kernel/ebpf/module.ll" "${ROOT}/kernel/ebpf/module.c"
+	${CLANG} -S -I"${ROOT}/ebpf/headers" -target bpf -O2 -Wall -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types -Werror -emit-llvm -g -c -o "${ROOT}/ebpf/module/module.ll" "${ROOT}/ebpf/module/module.c"
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF LLVM code: ${os} [\e[32mok\e[0m]";
@@ -18,7 +18,7 @@ build_ebpf() {
 		echo -e "- Generate eBPF LLVM code: ${os} [\e[31mfail\e[0m]";
 	fi;
 
-	${LLC} -march=bpfeb -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfeb" "${ROOT}/kernel/ebpf/module.ll";
+	${LLC} -march=bpfeb -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfeb" "${ROOT}/ebpf/module/module.ll";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF big-endian module: ${os} [\e[32mok\e[0m]";
@@ -26,7 +26,7 @@ build_ebpf() {
 		echo -e "- Generate eBPF big-endian module: ${os} [\e[31mfail\e[0m]";
 	fi;
 
-	${LLC} -march=bpfel -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfel" "${ROOT}/kernel/ebpf/module.ll";
+	${LLC} -march=bpfel -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfel" "${ROOT}/ebpf/module/module.ll";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF little-endian module: ${os} [\e[32mok\e[0m]";
@@ -58,7 +58,7 @@ build_source() {
 
 	cd "${ROOT}/source";
 
-	env CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" ${GO} build -tags "${variant}" -o "${folder}/ebpf-firewall-${os}-${arch}" "${ROOT}/source/main.go";
+	env CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" ${GO} build -tags "${variant}" -o "${folder}/tholian-firewall-${variant}-${arch}" "${ROOT}/source/cmds/tholian-firewall/main.go";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Build source: ${os} / ${arch} [\e[32mok\e[0m]";

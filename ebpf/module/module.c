@@ -8,46 +8,65 @@
 #include <linux/icmpv6.h>
 #include <linux/in.h>
 
+#include "../headers/common.h"
+#include "../headers/bpf.h"
 #include "../headers/bpf_helpers.h"
 #include "../headers/bpf_endian.h"
-#include "../headers/common.h"
 #include "module.h"
 
+struct ipv4_subnet {
+	__u32 prefixlen;
+	__u8  address[4];
+};
+
+struct ipv6_subnet {
+	__u32 prefixlen;
+	__u8  address[16];
+};
+
+// Max usage: ~16MB (16711425 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 500000);
+	__uint(max_entries, 65535);
 	__uint(key, 254);    // FQDN, host byte order (little endian)
 	__type(value, __u8); // 1 = banned, 0 = unbanned
 } domain_bans SEC(".maps");
 
+// Max usage: ~590KB (589815 bytes)
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 500000);
-	__type(key, __u32);  // ipv4 address, network byte order (big endian)
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__uint(max_entries, 65535);
+	__type(key, struct ipv4_subnet);  // ipv4 address, network byte order (big endian)
 	__type(value, __u8); // 1 = banned, 0 = unbanned
+	__uint(map_flags, BPF_F_NO_PREALLOC);
 } ipv4_bans SEC(".maps");
 
+// Max usage: ~1KB (1152 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 128);
-	__type(key, __u32);  // ipv4 address, network byte order (big endian)
-	__type(value, __u8); // amount of warnings
+	__type(key, struct ipv4_subnet);  // ipv4 address, network byte order (big endian)
+	__type(value, __u8); // (1 - 16) amount of warnings
 } ipv4_warnings SEC(".maps");
 
+// Max usage: ~1MB (1376235 bytes)
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 500000);
-	__type(key, __u128); // ipv6 address, network byte order (big endian)
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__uint(max_entries, 65535);
+	__type(key, struct ipv6_subnet); // ipv6 address, network byte order (big endian)
 	__type(value, __u8); // 1 = banned, 0 = unbanned
+	__uint(map_flags, BPF_F_NO_PREALLOC);
 } ipv6_bans SEC(".maps");
 
+// Max usage: ~2KB (2688 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 128);
-	__type(key, __u128); // ipv6 address, network byte order (big endian)
-	__type(value, __u8); // amount of warnings
+	__type(key, struct ipv6_subnet); // ipv6 address, network byte order (big endian)
+	__type(value, __u8); // (1 - 16) amount of warnings
 } ipv6_warnings SEC(".maps");
 
+// Max usage: ~197KB (196605 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 65535);
@@ -57,35 +76,31 @@ struct {
 
 
 
-static __always_inline bool warn_ipv4(__u32 *address) {
+static __always_inline bool warn_ipv4(struct ipv4_subnet *subnet) {
 
-	__u8 *warnings_ipv4 = NULL;
+	__u8 *warnings= NULL;
 
-	warnings_ipv4 = bpf_map_lookup_elem(&ipv4_warnings, address);
+	warnings = bpf_map_lookup_elem(&ipv4_warnings, subnet);
 
-	if (warnings_ipv4 != NULL) {
+	if (warnings != NULL) {
 
-		__u8 tmp = 0;
+		__u8 value = 0;
+		value = *warnings + 1;
 
-		tmp = *warnings_ipv4 + 1;
+		bpf_map_update_elem(&ipv4_warnings, subnet, &value, BPF_ANY);
 
-		bpf_map_update_elem(&ipv4_warnings, address, &tmp, BPF_ANY);
-
-		if (tmp > 16) {
+		if (value > 16) {
 
 			__u8 banned = 1;
-			bpf_map_update_elem(&ipv4_bans, address, &banned, BPF_ANY);
-
-			tmp = 0;
-			bpf_map_update_elem(&ipv4_warnings, address, &tmp, BPF_ANY);
+			bpf_map_update_elem(&ipv4_bans, subnet, &banned, BPF_ANY);
+			bpf_map_delete_elem(&ipv4_warnings, subnet);
 
 		}
 
 	} else {
 
-		__u8 tmp = 1;
-
-		bpf_map_update_elem(&ipv4_warnings, address, &tmp, BPF_ANY);
+		__u8 value = 1;
+		bpf_map_update_elem(&ipv4_warnings, subnet, &value, BPF_ANY);
 
 	}
 
@@ -93,35 +108,31 @@ static __always_inline bool warn_ipv4(__u32 *address) {
 
 }
 
-static __always_inline bool warn_ipv6(__u128 *address) {
+static __always_inline bool warn_ipv6(struct ipv6_subnet *subnet) {
 
-	__u8 *warnings_ipv6 = NULL;
+	__u8 *warnings = NULL;
 
-	warnings_ipv6 = bpf_map_lookup_elem(&ipv6_warnings, address);
+	warnings = bpf_map_lookup_elem(&ipv6_warnings, subnet);
 
-	if (warnings_ipv6 != NULL) {
+	if (warnings != NULL) {
 
-		__u8 tmp = 0;
+		__u8 value = 0;
+		value = *warnings + 1;
 
-		tmp = *warnings_ipv6 + 1;
+		bpf_map_update_elem(&ipv6_warnings, subnet, &value, BPF_ANY);
 
-		bpf_map_update_elem(&ipv6_warnings, address, &tmp, BPF_ANY);
-
-		if (tmp > 16) {
+		if (value > 16) {
 
 			__u8 banned = 1;
-			bpf_map_update_elem(&ipv6_bans, address, &banned, BPF_ANY);
-
-			tmp = 0;
-			bpf_map_update_elem(&ipv6_warnings, address, &tmp, BPF_ANY);
+			bpf_map_update_elem(&ipv6_bans, subnet, &banned, BPF_ANY);
+			bpf_map_delete_elem(&ipv6_warnings, subnet);
 
 		}
 
 	} else {
 
-		__u8 tmp = 1;
-
-		bpf_map_update_elem(&ipv6_warnings, address, &tmp, BPF_ANY);
+		__u8 value = 1;
+		bpf_map_update_elem(&ipv6_warnings, subnet, &value, BPF_ANY);
 
 	}
 
@@ -129,11 +140,11 @@ static __always_inline bool warn_ipv6(__u128 *address) {
 
 }
 
-static __always_inline bool is_filtered_ipv4(__u32 *address) {
+static __always_inline bool is_filtered_ipv4(struct ipv4_subnet *subnet) {
 
 	__u8 *banned = NULL;
 
-	banned = bpf_map_lookup_elem(&ipv4_bans, address);
+	banned = bpf_map_lookup_elem(&ipv4_bans, subnet);
 
 	if (banned != NULL && banned != 0) {
 		return true;
@@ -143,11 +154,11 @@ static __always_inline bool is_filtered_ipv4(__u32 *address) {
 
 }
 
-static __always_inline bool is_filtered_ipv6(__u128 *address) {
+static __always_inline bool is_filtered_ipv6(struct ipv6_subnet *subnet) {
 
 	__u8 *banned = NULL;
 
-	banned = bpf_map_lookup_elem(&ipv6_bans, address);
+	banned = bpf_map_lookup_elem(&ipv6_bans, subnet);
 
 	if (banned != NULL && banned != 0) {
 		return true;
@@ -306,10 +317,6 @@ static __always_inline bool is_likely_nmap_tcp_scan(struct tcphdr *tcp_header) {
 
 
 
-
-
-
-
 SEC("xdp")
 int xdp_prog_main(struct xdp_md *ctx) {
 
@@ -332,10 +339,6 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 	// struct udphdr *udp_header = NULL;
 
-	// __u8 *blocked_ip = NULL;
-	// __u32 ipv4_address = 0;
-	// __u128 ipv6_address = 0;
-
 	// __u16 ipv4_port = 0;
 	// __u16 ipv6_port = 0;
 
@@ -343,20 +346,29 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 		int protocol = parse_iphdr(&cursor, data_end, &ipv4_header);
 
-		__u32 ipv4_source = 0;
-		__u32 ipv4_dest = 0;
+		struct ipv4_subnet ipv4_source;
+		ipv4_source.prefixlen = 32;
+
+		struct ipv4_subnet ipv4_dest;
+		ipv4_dest.prefixlen = 32;
 
 		if (ipv4_header) {
-			memcpy(&ipv4_source, &ipv4_header->saddr, sizeof(ipv4_source));
-			memcpy(&ipv4_dest, &ipv4_header->daddr, sizeof(ipv4_dest));
-		}
 
-		if (ipv4_source != 0) {
+			memcpy(&ipv4_source.address, &ipv4_header->saddr, sizeof(ipv4_source.address));
+			memcpy(&ipv4_dest.address, &ipv4_header->daddr, sizeof(ipv4_dest.address));
 
 			if (is_filtered_ipv4(&ipv4_source) == true) {
 
 #ifdef ENABLE_DEBUG
-				// bpf_printk("Banned %pI4", &ipv4_source);
+				// bpf_printk("Banned %pI4", &ipv4_source.address);
+#endif
+
+				return XDP_DROP;
+
+			} else if (is_filtered_ipv4(&ipv4_dest) == true) {
+
+#ifdef ENABLE_DEBUG
+				// bpf_printk("Banned %pI4", &ipv4_dest.address);
 #endif
 
 				return XDP_DROP;
@@ -407,8 +419,8 @@ int xdp_prog_main(struct xdp_md *ctx) {
 				}
 
 				bpf_printk("ETH_P_IP/UDP port %d -> %d", bpf_ntohs(port_source), bpf_ntohs(port_dest));
-				bpf_printk("%pI4", &ipv4_source);
-				bpf_printk("%pI4", &ipv4_dest);
+				bpf_printk("%pI4", &ipv4_source.address);
+				bpf_printk("%pI4", &ipv4_dest.address);
 
 			}
 
@@ -474,8 +486,8 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 #ifdef ENABLE_DEBUG
 			// bpf_printk("ETH_P_IP/ICMP");
-			// bpf_printk("%pI4", &ipv4_source);
-			// bpf_printk("%pI4", &ipv4_dest);
+			// bpf_printk("%pI4", &ipv4_source.address);
+			// bpf_printk("%pI4", &ipv4_dest.address);
 #endif
 
 		}
@@ -486,146 +498,155 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 		int protocol = parse_ipv6hdr(&cursor, data_end, &ipv6_header);
 
-		__u128 ipv6_source = 0;
-		__u128 ipv6_dest = 0;
+		struct ipv6_subnet ipv6_source;
+        ipv6_source.prefixlen = 128;
+
+		struct ipv6_subnet ipv6_dest;
+		ipv6_dest.prefixlen = 128;
 
 		if (ipv6_header) {
-			memcpy(&ipv6_source, &ipv6_header->saddr.in6_u.u6_addr32, sizeof(ipv6_source));
-			memcpy(&ipv6_dest, &ipv6_header->daddr.in6_u.u6_addr32, sizeof(ipv6_dest));
-		}
 
-		if (ipv6_source != 0) {
+			memcpy(&ipv6_source.address, &ipv6_header->saddr.in6_u.u6_addr32, sizeof(ipv6_source.address));
+			memcpy(&ipv6_dest.address, &ipv6_header->daddr.in6_u.u6_addr32, sizeof(ipv6_dest.address));
 
 			if (is_filtered_ipv6(&ipv6_source) == true) {
 
 #ifdef ENABLE_DEBUG
-				// bpf_printk("Banned %pI6", &ipv6_source);
+				// bpf_printk("Banned %pI6", &ipv6_source.address);
+#endif
+
+				return XDP_DROP;
+
+			} else if (is_filtered_ipv6(&ipv6_dest) == true) {
+
+#ifdef ENABLE_DEBUG
+				// bpf_printk("Banned %pI6", &ipv6_dest.address);
 #endif
 
 				return XDP_DROP;
 
 			}
 
-		}
+			if (protocol == IPPROTO_UDP) {
 
-		if (protocol == IPPROTO_UDP) {
+				struct udphdr *udp_header = NULL;
 
-			struct udphdr *udp_header = NULL;
+				int length = parse_udphdr(&cursor, data_end, &udp_header);
+				if (length < 0) {
+					return XDP_DROP;
+				}
 
-			int length = parse_udphdr(&cursor, data_end, &udp_header);
-			if (length < 0) {
-				return XDP_DROP;
-			}
+				__u16 port_source = udp_header->source;
 
-			__u16 port_source = udp_header->source;
+				// remote port is filtered
+				if (is_filtered_port(port_source) == true) {
+					return XDP_DROP;
+				}
 
-			// remote port is filtered
-			if (is_filtered_port(port_source) == true) {
-				return XDP_DROP;
-			}
+				__u16 port_dest = udp_header->dest;
 
-			__u16 port_dest = udp_header->dest;
-
-			// local port is filtered
-			if (is_filtered_port(port_dest) == true) {
-				return XDP_DROP;
-			}
+				// local port is filtered
+				if (is_filtered_port(port_dest) == true) {
+					return XDP_DROP;
+				}
 
 #ifdef ENABLE_DNSFILTER
 
-			if (
-				port_source == bpf_htons(53)
-				|| port_source == bpf_htons(853)
-				|| port_source == bpf_htons(5353)
-				|| port_dest == bpf_htons(53)
-				|| port_dest == bpf_htons(853)
-				|| port_dest == bpf_htons(5353)
-			) {
+				if (
+					port_source == bpf_htons(53)
+					|| port_source == bpf_htons(853)
+					|| port_source == bpf_htons(5353)
+					|| port_dest == bpf_htons(53)
+					|| port_dest == bpf_htons(853)
+					|| port_dest == bpf_htons(5353)
+				) {
 
-				// TODO: struct dnshdr *dns_header = NULL;
+					// TODO: struct dnshdr *dns_header = NULL;
 
-			}
+				}
 
 #endif
 
-		} else if (protocol == IPPROTO_TCP) {
+			} else if (protocol == IPPROTO_TCP) {
 
-			struct tcphdr *tcp_header = NULL;
+				struct tcphdr *tcp_header = NULL;
 
-			int length = parse_tcphdr(&cursor, data_end, &tcp_header);
+				int length = parse_tcphdr(&cursor, data_end, &tcp_header);
 
-			if (length < 0) {
-				return XDP_DROP;
-			}
+				if (length < 0) {
+					return XDP_DROP;
+				}
 
-			if (is_filtered_nmap_tcp_scan(tcp_header) == true) {
-				return XDP_DROP;
-			} else if (is_likely_nmap_tcp_scan(tcp_header) == true) {
-				warn_ipv6(&ipv6_source);
-			}
+				if (is_filtered_nmap_tcp_scan(tcp_header) == true) {
+					return XDP_DROP;
+				} else if (is_likely_nmap_tcp_scan(tcp_header) == true) {
+					warn_ipv6(&ipv6_source);
+				}
 
-			__u16 port_source = tcp_header->source;
+				__u16 port_source = tcp_header->source;
 
-			// remote port is filtered
-			if (is_filtered_port(port_source) == true) {
-				return XDP_DROP;
-			}
+				// remote port is filtered
+				if (is_filtered_port(port_source) == true) {
+					return XDP_DROP;
+				}
 
-			__u16 port_dest = tcp_header->dest;
+				__u16 port_dest = tcp_header->dest;
 
-			// local port is filtered
-			if (is_filtered_port(port_dest) == true) {
-				return XDP_DROP;
-			}
+				// local port is filtered
+				if (is_filtered_port(port_dest) == true) {
+					return XDP_DROP;
+				}
 
 #ifdef ENABLE_DNSFILTER
 
-			if (
-				port_source == bpf_htons(53)
-				|| port_source == bpf_htons(853)
-				|| port_source == bpf_htons(5353)
-				|| port_dest == bpf_htons(53)
-				|| port_dest == bpf_htons(853)
-				|| port_dest == bpf_htons(5353)
-			) {
+				if (
+					port_source == bpf_htons(53)
+					|| port_source == bpf_htons(853)
+					|| port_source == bpf_htons(5353)
+					|| port_dest == bpf_htons(53)
+					|| port_dest == bpf_htons(853)
+					|| port_dest == bpf_htons(5353)
+				) {
 
-				// TODO: struct dnshdr *dns_header = NULL;
+					// TODO: struct dnshdr *dns_header = NULL;
 
-			}
+				}
 
 #endif
 
-		} else if (protocol == IPPROTO_ICMP) {
+			} else if (protocol == IPPROTO_ICMP) {
 
-			struct icmphdr *icmp_header = NULL;
+				struct icmphdr *icmp_header = NULL;
 
-			parse_icmphdr(&cursor, data_end, &icmp_header);
+				parse_icmphdr(&cursor, data_end, &icmp_header);
 
-			if (icmp_header && is_filtered_icmp_packet(icmp_header) == true) {
-				return XDP_DROP;
-			}
+				if (icmp_header && is_filtered_icmp_packet(icmp_header) == true) {
+					return XDP_DROP;
+				}
 
 #ifdef ENABLE_DEBUG
-			// bpf_printk("ETH_P_IP/ICMP");
-			// bpf_printk("%pI6", &ipv6_source);
-			// bpf_printk("%pI6", &ipv6_dest);
+				// bpf_printk("ETH_P_IP/ICMP");
+				// bpf_printk("%pI6", &ipv6_source.address);
+				// bpf_printk("%pI6", &ipv6_dest.address);
 #endif
 
-		} else if (protocol == IPPROTO_ICMPV6) {
+			} else if (protocol == IPPROTO_ICMPV6) {
 
-			struct icmp6hdr *icmp6_header = NULL;
+				struct icmp6hdr *icmp6_header = NULL;
 
-			parse_icmp6hdr(&cursor, data_end, &icmp6_header);
+				parse_icmp6hdr(&cursor, data_end, &icmp6_header);
 
-			if (icmp6_header && is_filtered_icmp6_packet(icmp6_header) == true) {
-				return XDP_DROP;
-			}
+				if (icmp6_header && is_filtered_icmp6_packet(icmp6_header) == true) {
+					return XDP_DROP;
+				}
 
 #ifdef ENABLE_DEBUG
-			// bpf_printk("ETH_P_IP/ICMP6");
-			// bpf_printk("%pI6", &ipv6_source);
-			// bpf_printk("%pI6", &ipv6_dest);
+				// bpf_printk("ETH_P_IP/ICMP6");
+				// bpf_printk("%pI6", &ipv6_source.address);
+				// bpf_printk("%pI6", &ipv6_dest.address);
 #endif
+
+			}
 
 		}
 

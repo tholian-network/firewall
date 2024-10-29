@@ -1,9 +1,5 @@
 # TODO
 
-- [ ] Build two variants of `tholian-firewall`
-- [ ] `-tags guard` with bundled insights
-- [ ] `-tags guard_openwrt` without bundled insights
-
 - [ ] `main.go` needs support for `search <target>` action
 - [ ] `actions/Search` to search for ASN data related to the current target
 
