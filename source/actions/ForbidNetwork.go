@@ -1,12 +1,12 @@
 package actions
 
-import "tholian-endpoint/adapters/mitigations/ebpf"
-import "tholian-endpoint/adapters/mitigations/iptables"
-import "tholian-endpoint/insights"
-import "tholian-endpoint/matchers"
-import "tholian-endpoint/structs"
+import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/iptables"
+import "tholian-firewall/insights"
+import "tholian-firewall/matchers"
+import "tholian-firewall/structs"
 
-func ForbidNetwork(system *structs.System, search matchers.Network) bool {
+func ForbidNetwork(search matchers.Network) bool {
 
 	var result bool = false
 

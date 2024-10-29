@@ -1,13 +1,12 @@
 package actions
 
-import "tholian-endpoint/adapters/mitigations/ebpf"
-import "tholian-endpoint/adapters/mitigations/iptables"
-import "tholian-endpoint/console"
-import "tholian-endpoint/matchers"
-import "tholian-endpoint/structs"
-import "tholian-endpoint/types"
+import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/iptables"
+import "tholian-firewall/console"
+import "tholian-firewall/matchers"
+import "tholian-firewall/types"
 
-func PermitConnection(system *structs.System, search matchers.Connection) bool {
+func PermitConnection(search matchers.Connection) bool {
 
 	var result bool = false
 

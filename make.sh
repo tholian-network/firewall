@@ -18,7 +18,7 @@ build_ebpf() {
 		echo -e "- Generate eBPF LLVM code: ${os} [\e[31mfail\e[0m]";
 	fi;
 
-	${LLC} -march=bpfeb -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module.bpfeb" "${ROOT}/kernel/ebpf/module.ll";
+	${LLC} -march=bpfeb -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfeb" "${ROOT}/kernel/ebpf/module.ll";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF big-endian module: ${os} [\e[32mok\e[0m]";
@@ -26,7 +26,7 @@ build_ebpf() {
 		echo -e "- Generate eBPF big-endian module: ${os} [\e[31mfail\e[0m]";
 	fi;
 
-	${LLC} -march=bpfel -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module.bpfel" "${ROOT}/kernel/ebpf/module.ll";
+	${LLC} -march=bpfel -mcpu=v1 -filetype=obj -o "${ROOT}/source/adapters/mitigations/ebpf/module/module.bpfel" "${ROOT}/kernel/ebpf/module.ll";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF little-endian module: ${os} [\e[32mok\e[0m]";
@@ -41,19 +41,24 @@ build_source() {
 	#
 	# Available build tags to reduce file size
 	#
-	# mitigations:
+	# guard:
+	# - includes source/adapters/mitigations/ebpf Kernel Modules
+	# - includes source/insights
+	#
+	# guard_openwrt:
 	# - includes source/adapters/mitigations/ebpf Kernel Modules
 	#
 
 	local os="$1";
 	local arch="$2";
+	local variant="$3";
 	local folder="${ROOT}/build/${os}";
 
 	mkdir -p "${folder}";
 
 	cd "${ROOT}/source";
 
-	env CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" ${GO} build -tags mitigations -o "${folder}/ebpf-firewall-${os}-${arch}" "${ROOT}/source/main.go";
+	env CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" ${GO} build -tags "${variant}" -o "${folder}/ebpf-firewall-${os}-${arch}" "${ROOT}/source/main.go";
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Build source: ${os} / ${arch} [\e[32mok\e[0m]";
@@ -75,15 +80,18 @@ if [[ "${GO}" != "" ]] && [[ "${CLANG}" != "" ]] && [[ "${LLC}" != "" ]]; then
 
 		build_ebpf;
 
-		build_source linux amd64;
-		build_source linux arm64;
+		build_source linux amd64 guard;
+		build_source linux arm64 guard;
+
+		build_source linux amd64 guard_openwrt;
+		build_source linux arm64 guard_openwrt;
 
 	else
 
 		echo -e "Build Script Usage:";
 		echo -e "";
-		echo -e "    bash ./make.sh ebpf;               # build eBPF kernel modules";
-		echo -e "    bash ./make.sh source;             # build source for this machine";
+		echo -e "    bash ./make.sh ebpf;";
+		echo -e "    bash ./make.sh source;";
 		echo -e "";
 
 		exit 1;

@@ -1,7 +1,7 @@
 package iptables
 
-import "tholian-endpoint/console"
-import "tholian-endpoint/structs"
+import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "strconv"
 
 func PermitNetwork(network structs.Network) bool {

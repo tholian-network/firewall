@@ -1,6 +1,6 @@
 package iptables
 
-import "tholian-endpoint/types"
+import "tholian-firewall/types"
 import "os/exec"
 import "strconv"
 

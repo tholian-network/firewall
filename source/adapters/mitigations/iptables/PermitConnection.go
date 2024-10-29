@@ -1,7 +1,7 @@
 package iptables
 
-import "tholian-endpoint/console"
-import "tholian-endpoint/types"
+import "tholian-firewall/console"
+import "tholian-firewall/types"
 import "strconv"
 
 func PermitConnection(connection types.Connection) bool {

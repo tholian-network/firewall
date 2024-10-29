@@ -37,6 +37,28 @@ func IsIPv4(value string) bool {
 
 }
 
+func IsIPv4AndPrefix(value string) bool {
+
+	if strings.Contains(value, ".") && strings.Contains(value, "/") {
+
+		tmp := strings.Split(value, "/")
+
+		if len(tmp) == 2 {
+
+			prefix, err := strconv.ParseUint(tmp[1], 10, 64)
+
+			if IsIPv4(tmp[0]) && err == nil && prefix >= 8 && prefix <= 32 {
+				return true
+			}
+
+		}
+
+	}
+
+	return false
+
+}
+
 func IsIPv4AndPort(value string) bool {
 
 	if strings.Contains(value, ".") && strings.Contains(value, ":") {
@@ -90,6 +112,33 @@ func ParseIPv4(value string) *IPv4 {
 	}
 
 	return result
+
+}
+
+func ParseIPv4AndPrefix(value string) (*IPv4, uint8) {
+
+	var result_ipv4 *IPv4 = nil
+	var result_prefix uint8 = 0
+
+	if strings.Contains(value, ".") && strings.Contains(value, "/") {
+
+		tmp1 := strings.Split(value, "/")
+
+		if len(tmp1) == 2 {
+
+			tmp2 := ParseIPv4(tmp1[0])
+			num, err := strconv.ParseUint(tmp1[1], 10, 8)
+
+			if tmp2 != nil && err == nil && num >= 8 && num <= 32 {
+				result_ipv4 = tmp2
+				result_prefix = uint8(num)
+			}
+
+		}
+
+	}
+
+	return result_ipv4, result_prefix
 
 }
 

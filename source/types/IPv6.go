@@ -150,6 +150,28 @@ func IsIPv6(value string) bool {
 
 }
 
+func IsIPv6AndPrefix(value string) bool {
+
+	if strings.HasPrefix(value, "[") && strings.Contains(value, "]/") {
+
+		tmp := strings.Split(value[1:], "]/")
+
+		if len(tmp) == 2 {
+
+			prefix, err := strconv.ParseUint(tmp[1], 10, 64)
+
+			if IsIPv6("[" + value + "]") && err == nil && prefix >= 8 && prefix <= 128 {
+				return true
+			}
+
+		}
+
+	}
+
+	return false
+
+}
+
 func IsIPv6AndPort(value string) bool {
 
 	if strings.HasPrefix(value, "[") && strings.Contains(value, "]:") {
@@ -204,6 +226,33 @@ func ParseIPv6(raw string) *IPv6 {
 	}
 
 	return result
+
+}
+
+func ParseIPv6AndPrefix(value string) (*IPv6, uint8) {
+
+	var result_ipv6 *IPv6 = nil
+	var result_prefix uint8 = 0
+
+	if strings.HasPrefix(value, "[") && strings.Contains(value, "]/") {
+
+		tmp1 := strings.Split(value[1:], "]/")
+
+		if len(tmp1) == 2 {
+
+			tmp2 := ParseIPv6("[" + tmp1[0] + "]")
+			num, err := strconv.ParseUint(tmp1[1], 10, 8)
+
+			if tmp2 != nil && err == nil && num >= 8 && num <= 128 {
+				result_ipv6 = tmp2
+				result_prefix = uint8(num)
+			}
+
+		}
+
+	}
+
+	return result_ipv6, result_prefix
 
 }
 

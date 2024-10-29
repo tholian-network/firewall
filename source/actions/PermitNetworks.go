@@ -1,14 +1,14 @@
 package actions
 
-import "tholian-endpoint/adapters/mitigations/ebpf"
-import "tholian-endpoint/adapters/mitigations/iptables"
-import "tholian-endpoint/console"
-import "tholian-endpoint/insights"
-import "tholian-endpoint/matchers"
-import "tholian-endpoint/structs"
+import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/iptables"
+import "tholian-firewall/console"
+import "tholian-firewall/insights"
+import "tholian-firewall/matchers"
+import "tholian-firewall/structs"
 import "strconv"
 
-func PermitNetworks(system *structs.System, searches []matchers.Network) bool {
+func PermitNetworks(searches []matchers.Network) bool {
 
 	var result bool = false
 
