@@ -34,6 +34,9 @@ bash make.sh ebpf;
 ```bash
 cd /path/to/tholian-firewall;
 bash make.sh source;
+
+# List the built binaries
+ls ./build/linux/*;
 ```
 
 
