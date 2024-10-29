@@ -1,5 +1,9 @@
 # TODO
 
+- [ ] `actions/Init` to initialize eBPF module if it has not been loaded
+- [ ] `actions/Load` to load a rules file that contains line-separated instructions
+- [ ] `actions/Status` to show eBPF module status of blocked addresses and networks
+
 - [ ] `main.go` needs support for `search <target>` action
 - [ ] `actions/Search` to search for ASN data related to the current target
 
