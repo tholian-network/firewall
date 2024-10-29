@@ -45,7 +45,7 @@ The `tholian-firewall` codebase uses two different reserved go build tags:
 - `guard_openwrt` which includes the [ebpf module](/source/adapters/mitigations/ebpf).
 
 There are also build tags which will fallback to `iptables` and `hosts` usage,
-due to lack of support for Linux's eBPF on those systems:
+due to lack of support for Linux's eBPF API on those operating systems:
 
 - `guard_freebsd`
 - `guard_netbsd`
