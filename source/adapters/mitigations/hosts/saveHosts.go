@@ -1,114 +1,157 @@
 package hosts
 
-import "tholian-firewall/types"
-import "os"
-import "sort"
+import "tholian-firewall/console"
+import "path/filepath"
 import "strings"
+import "sort"
+import "os"
+
+func renderHosts(content string, domains []string) string {
+
+	block := make([]string, 0)
+
+	block = append(block, beginMarker)
+
+	for d := 0; d < len(domains); d++ {
+		block = append(block, sinkIPv4+" "+domains[d])
+		block = append(block, sinkIPv6+" "+domains[d])
+	}
+
+	block = append(block, endMarker)
+
+	lines := strings.Split(content, "\n")
+
+	begin := -1
+	end := -1
+
+	for l := 0; l < len(lines); l++ {
+
+		trimmed := strings.TrimSpace(lines[l])
+
+		if trimmed == beginMarker {
+			begin = l
+		}
+
+		if begin != -1 && trimmed == endMarker {
+			end = l
+			break
+		}
+
+	}
+
+	if begin != -1 && end != -1 && end > begin {
+
+		result := make([]string, 0)
+		result = append(result, lines[:begin]...)
+		result = append(result, block...)
+		result = append(result, lines[end+1:]...)
+
+		return strings.Join(result, "\n")
+
+	}
+
+	result := strings.TrimRight(content, "\n")
+
+	if result != "" {
+		result = result + "\n\n"
+	}
+
+	result = result + strings.Join(block, "\n") + "\n"
+
+	return result
+
+}
+
+func writeHosts(buffer []byte) bool {
+
+	mode := os.FileMode(0644)
+
+	info, err := os.Stat(hostsPath)
+
+	if err == nil {
+		mode = info.Mode().Perm()
+	}
+
+	target := hostsPath
+
+	resolved, err := filepath.EvalSymlinks(hostsPath)
+
+	if err == nil {
+		target = resolved
+	}
+
+	directory := filepath.Dir(target)
+
+	temp, err := os.CreateTemp(directory, ".tholian-hosts-*")
+
+	if err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		return false
+	}
+
+	tempName := temp.Name()
+
+	cleanup := func() {
+		temp.Close()
+		os.Remove(tempName)
+	}
+
+	if _, err := temp.Write(buffer); err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		cleanup()
+		return false
+	}
+
+	if err := temp.Sync(); err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		cleanup()
+		return false
+	}
+
+	if err := temp.Close(); err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		os.Remove(tempName)
+		return false
+	}
+
+	if err := os.Chmod(tempName, mode); err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		os.Remove(tempName)
+		return false
+	}
+
+	if err := os.Rename(tempName, target); err != nil {
+		console.Error("adapters/hosts: " + err.Error())
+		os.Remove(tempName)
+		return false
+	}
+
+	return true
+
+}
 
 func saveHosts() bool {
 
-	var result bool = false
-	var lines []string
-	var hosts_local_v4 [][]string
-	var hosts_local_v6 [][]string
-	var hosts_inter_v4 [][]string
-	var hosts_inter_v6 [][]string
-	var hosts_blocked [][]string
+	var content string
+
+	buffer, err := os.ReadFile(hostsPath)
+
+	if err == nil {
+		content = string(buffer)
+	}
+
+	domains := make([]string, 0, len(Hosts))
 
 	for domain, ips := range Hosts {
 
-		for i := 0; i < len(ips); i++ {
-
-			if ips[i] == "0.0.0.0" {
-
-				hosts_blocked = append(hosts_blocked, []string{ips[i], domain})
-
-			} else if strings.Contains(domain, ".") {
-
-				if types.IsIPv4(ips[i]) {
-					hosts_inter_v4 = append(hosts_inter_v4, []string{ips[i], domain})
-				} else if types.IsIPv6(ips[i]) {
-					hosts_inter_v6 = append(hosts_inter_v6, []string{ips[i], domain})
-				}
-
-			} else {
-
-				if types.IsIPv4(ips[i]) {
-					hosts_local_v4 = append(hosts_local_v4, []string{ips[i], domain})
-				} else if types.IsIPv6(ips[i]) {
-					hosts_local_v6 = append(hosts_local_v6, []string{ips[i], domain})
-				}
-
-			}
-
+		if len(ips) > 0 {
+			domains = append(domains, domain)
 		}
 
 	}
 
-	sort.Slice(hosts_local_v4, func(a int, b int) bool {
-		return hosts_local_v4[a][0] < hosts_local_v4[b][0]
-	})
+	sort.Strings(domains)
 
-	sort.Slice(hosts_local_v6, func(a int, b int) bool {
-		return hosts_local_v6[a][0] < hosts_local_v6[b][0]
-	})
-
-	sort.Slice(hosts_inter_v4, func(a int, b int) bool {
-		return hosts_inter_v4[a][0] < hosts_inter_v4[b][0]
-	})
-
-	sort.Slice(hosts_inter_v6, func(a int, b int) bool {
-		return hosts_inter_v6[a][0] < hosts_inter_v6[b][0]
-	})
-
-	sort.Slice(hosts_blocked, func(a int, b int) bool {
-		return hosts_blocked[a][1] < hosts_blocked[b][1]
-	})
-
-	lines = append(lines, "")
-	lines = append(lines, "# LOCAL HOSTS")
-	lines = append(lines, "")
-
-	for h := 0; h < len(hosts_local_v4); h++ {
-		lines = append(lines, hosts_local_v4[h][0]+" "+hosts_local_v4[h][1])
-	}
-
-	for h := 0; h < len(hosts_local_v6); h++ {
-		lines = append(lines, hosts_local_v6[h][0]+" "+hosts_local_v6[h][1])
-	}
-
-	lines = append(lines, "")
-	lines = append(lines, "# INTERNET HOSTS")
-	lines = append(lines, "")
-
-	for h := 0; h < len(hosts_inter_v4); h++ {
-		lines = append(lines, hosts_inter_v4[h][0]+" "+hosts_inter_v4[h][1])
-	}
-
-	for h := 0; h < len(hosts_inter_v6); h++ {
-		lines = append(lines, hosts_inter_v6[h][0]+" "+hosts_inter_v6[h][1])
-	}
-
-	lines = append(lines, "")
-	lines = append(lines, "# BLOCKED HOSTS")
-	lines = append(lines, "")
-
-	for h := 0; h < len(hosts_blocked); h++ {
-		lines = append(lines, hosts_blocked[h][0]+" "+hosts_blocked[h][1])
-	}
-
-	var buffer = []byte(strings.Join(lines, "\n"))
-
-	if len(buffer) > 0 {
-
-		err := os.WriteFile("/etc/hosts", buffer, 0666)
-
-		if err == nil {
-			result = true
-		}
-
-	}
-
-	return result
+	return writeHosts([]byte(renderHosts(content, domains)))
 
 }

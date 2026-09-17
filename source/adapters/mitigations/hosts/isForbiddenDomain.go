@@ -10,7 +10,7 @@ func isForbiddenDomain(domain string) bool {
 
 		for i := 0; i < len(ips); i++ {
 
-			if ips[i] == "0.0.0.0" {
+			if ips[i] == sinkIPv4 || ips[i] == sinkIPv6 {
 				result = true
 				break
 			}
@@ -20,5 +20,20 @@ func isForbiddenDomain(domain string) bool {
 	}
 
 	return result
+
+}
+
+func IsForbiddenDomain(domain string) bool {
+
+	domain = normalizeDomain(domain)
+
+	if domain == "" {
+		return false
+	}
+
+	hostsMutex.Lock()
+	defer hostsMutex.Unlock()
+
+	return isForbiddenDomain(domain)
 
 }

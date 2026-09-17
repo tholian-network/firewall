@@ -1,7 +1,5 @@
 package actions
 
-import "tholian-firewall/adapters/mitigations/ebpf"
-import "tholian-firewall/adapters/mitigations/iptables"
 import "tholian-firewall/console"
 import "tholian-firewall/insights"
 import "tholian-firewall/matchers"
@@ -14,8 +12,8 @@ func PermitNetworks(searches []matchers.Network) bool {
 
 	console.Group("actions/PermitNetworks")
 
-	networks := make([]structs.Network, 0)
-	remaining := make([]structs.Network, 0)
+	total := 0
+	succeeded := 0
 
 	for s := 0; s < len(searches); s++ {
 
@@ -26,49 +24,25 @@ func PermitNetworks(searches []matchers.Network) bool {
 			network := insights.Internet.SearchASN(search.Name)
 
 			if network.IsValid() {
-				networks = append(networks, network)
-			}
 
-		} else if search.Subnet != "" {
+				total = total + 1
 
-			subnet := insights.Internet.Search(search.Subnet)
-			network := structs.NewNetwork(subnet.Name)
-			network.AddSubnet(subnet)
-
-			if network.IsValid() {
-				networks = append(networks, network)
-			}
-
-		}
-
-	}
-
-	if len(networks) > 0 {
-
-		if ebpf.SUPPORTED == true {
-
-			for n := 0; n < len(networks); n++ {
-
-				network := networks[n]
-
-				if ebpf.PermitNetwork(network) {
-					// Do Nothing
-				} else {
-					remaining = append(remaining, network)
+				if permitNetwork(network) == true {
+					succeeded = succeeded + 1
 				}
 
 			}
 
-		} else if iptables.SUPPORTED == true {
+		} else if search.Subnet != "" && search.Subnet != "any" {
 
-			for n := 0; n < len(networks); n++ {
+			subnet := structs.ToSubnet(search.Subnet)
 
-				network := networks[n]
+			if subnet.IsValid() {
 
-				if iptables.PermitNetwork(network) {
-					// Do Nothing
-				} else {
-					remaining = append(remaining, network)
+				total = total + 1
+
+				if permitSubnetOrAddress(subnet) == true {
+					succeeded = succeeded + 1
 				}
 
 			}
@@ -77,13 +51,9 @@ func PermitNetworks(searches []matchers.Network) bool {
 
 	}
 
-	if len(remaining) == 0 {
-		result = true
-	} else {
-		result = false
-	}
+	result = succeeded == total
 
-	console.Log("Permitted " + strconv.Itoa(len(networks)-len(remaining)) + "/" + strconv.Itoa(len(networks)) + " Networks")
+	console.Log("Permitted " + strconv.Itoa(succeeded) + "/" + strconv.Itoa(total) + " Networks")
 	console.GroupEndResult(result, "actions/PermitNetworks")
 
 	return result

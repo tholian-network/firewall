@@ -235,10 +235,22 @@ Target parsing (`actions/Target.go`) follows RFC 2732 for IPv6:
 
 ## 7. Fallbacks
 
-- `iptables`: used when eBPF is unavailable. Network bans apply to both `INPUT`
-  and `OUTPUT`. Coarse; not equivalent to eBPF.
-- `hosts`: rewrites `/etc/hosts` for domain bans (currently whole-file; a
-  managed-block rewrite is pending).
+The fallbacks mirror the eBPF adapter's surface (`Forbid*`/`Permit*`/`IsForbidden*`
+plus `Status`) so that actions can select a backend per target kind:
+
+- `iptables`: used when eBPF is unavailable. IPv4 (`iptables`/`iptables-nft`) and
+  IPv6 (`ip6tables`/`ip6tables-nft`) are detected separately; port rules are
+  installed for both families. Rules are appended to `INPUT` and `OUTPUT`, are
+  idempotent (`-C` before `-A`), and are tracked in-process for `status`/`flush`.
+  Coarse; not equivalent to eBPF.
+- `hosts`: rewrites only a managed block in `/etc/hosts` (delimited by
+  `# BEGIN THOLIAN FIREWALL` / `# END THOLIAN FIREWALL`), preserving all other
+  lines. Domain bans write both `0.0.0.0` and the IPv6 unspecified address, and
+  matching is case-insensitive.
+
+Backend selection lives in `actions/backend.go`: addresses, subnets, and ports
+use eBPF then iptables; domains use eBPF then hosts.
+
 
 ---
 

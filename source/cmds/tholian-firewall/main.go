@@ -2,6 +2,8 @@ package main
 
 import "tholian-firewall/actions"
 import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/hosts"
+import "tholian-firewall/adapters/mitigations/iptables"
 import "tholian-firewall/console"
 import "os"
 
@@ -32,9 +34,9 @@ func showUsage() {
 	console.Log("forbid   | Forbid a Target's network traffic.                              |")
 	console.Log("permit   | Permit a Target's network traffic.                              |")
 	console.Log("search   | Search for a Target's Network/ASN details.                      |")
-	console.Log("init     | Load the eBPF Module and attach it to all interfaces.           |")
+	console.Log("init     | Load the firewall backend and attach it to all interfaces.  |")
 	console.Log("load     | Load a rules file with line-separated instructions.             |")
-	console.Log("status   | Show the eBPF Module status of forbidden targets.               |")
+	console.Log("status   | Show the status of forbidden targets per backend.               |")
 	console.Log("selftest | Run an in-process eBPF map round-trip self test.                |")
 	console.GroupEnd("---------|-----------------------------------------------------------------|")
 
@@ -77,8 +79,8 @@ func main() {
 
 		} else if os.Args[1] == "check" && len(os.Args) == 3 {
 
-			if ebpf.SUPPORTED == false {
-				console.Error("tholian-firewall: no eBPF backend available")
+			if ebpf.SUPPORTED == false && iptables.SUPPORTED == false && hosts.SUPPORTED == false {
+				console.Error("tholian-firewall: no firewall backend available")
 				os.Exit(3)
 			}
 

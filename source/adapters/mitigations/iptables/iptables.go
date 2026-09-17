@@ -1,16 +1,37 @@
 package iptables
 
-import "os"
+import "os/exec"
 
 var SUPPORTED bool = false
+var SUPPORTED_IPV4 bool = false
+var SUPPORTED_IPV6 bool = false
+
+var programIPv4 string
+var programIPv6 string
+
+func findProgram(names ...string) string {
+
+	for n := 0; n < len(names); n++ {
+
+		path, err := exec.LookPath(names[n])
+
+		if err == nil {
+			return path
+		}
+
+	}
+
+	return ""
+
+}
 
 func init() {
 
-	_, err1 := os.Stat("/sbin/iptables")
-	_, err2 := os.Stat("/sbin/ip6tables")
+	programIPv4 = findProgram("iptables", "iptables-nft", "/usr/sbin/iptables", "/sbin/iptables")
+	programIPv6 = findProgram("ip6tables", "ip6tables-nft", "/usr/sbin/ip6tables", "/sbin/ip6tables")
 
-	if err1 == nil && err2 == nil {
-		SUPPORTED = true
-	}
+	SUPPORTED_IPV4 = programIPv4 != ""
+	SUPPORTED_IPV6 = programIPv6 != ""
+	SUPPORTED = SUPPORTED_IPV4
 
 }

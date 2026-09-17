@@ -4,50 +4,43 @@ import "tholian-firewall/console"
 
 func PermitDomain(domain string) bool {
 
-	var result bool = false
+	if SUPPORTED == false {
+		return false
+	}
 
-	if SUPPORTED == true {
+	domain = normalizeDomain(domain)
 
-		if isForbiddenDomain(domain) {
+	if domain == "" {
+		return false
+	}
 
-			console.Warn("adapters/hosts: Permit Domain \"" + domain + "\"")
+	hostsMutex.Lock()
+	defer hostsMutex.Unlock()
 
-			ips, ok := Hosts[domain]
+	if isForbiddenDomain(domain) == false {
+		return true
+	}
 
-			if ok == true {
+	console.Warn("adapters/hosts: Permit Domain \"" + domain + "\"")
 
-				var filtered []string
+	filtered := make([]string, 0)
 
-				for i := 0; i < len(ips); i++ {
+	for i := 0; i < len(Hosts[domain]); i++ {
 
-					if ips[i] == "0.0.0.0" {
-						continue
-					} else if ips[i] == "0000:0000:0000:0000:0000:0000:0000:0000" {
-						continue
-					} else {
-						filtered = append(filtered, ips[i])
-					}
-
-				}
-
-				if len(filtered) > 0 {
-					Hosts[domain] = filtered
-				} else {
-					delete(Hosts, domain)
-				}
-
-			}
-
-			result = saveHosts()
-
-		} else {
-
-			result = true
-
+		if Hosts[domain][i] == sinkIPv4 || Hosts[domain][i] == sinkIPv6 {
+			continue
 		}
+
+		filtered = append(filtered, Hosts[domain][i])
 
 	}
 
-	return result
+	if len(filtered) > 0 {
+		Hosts[domain] = filtered
+	} else {
+		delete(Hosts, domain)
+	}
+
+	return saveHosts()
 
 }

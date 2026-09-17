@@ -3,11 +3,37 @@ package hosts
 import "tholian-firewall/types"
 import "os"
 import "strings"
+import "sync"
+
+const beginMarker = "# BEGIN THOLIAN FIREWALL - do not edit below"
+const endMarker = "# END THOLIAN FIREWALL"
+
+const sinkIPv4 = "0.0.0.0"
+const sinkIPv6 = "0000:0000:0000:0000:0000:0000:0000:0000"
+
+var hostsPath = "/etc/hosts"
 
 var Hosts map[string][]string
 var SUPPORTED bool = false
 
+var hostsMutex sync.Mutex
+
+func normalizeDomain(value string) string {
+
+	domain := strings.ToLower(strings.TrimSpace(value))
+	domain = strings.TrimSuffix(domain, ".")
+
+	return domain
+
+}
+
 func addHost(domain string, ip_raw string) {
+
+	domain = normalizeDomain(domain)
+
+	if domain == "" {
+		return
+	}
 
 	var ip string
 
@@ -24,23 +50,22 @@ func addHost(domain string, ip_raw string) {
 		ipv6 := types.ParseIPv6(ip_raw)
 
 		if ipv6 != nil {
-			tmp := ipv6.String()
-			ip = tmp[1: len(tmp)-1]
+			ip = ipv6.String()
 		}
 
 	}
 
 	if ip != "" {
 
-		_, ok := Hosts[domain]
+		ips, ok := Hosts[domain]
 
 		if ok == true {
 
 			var found bool = false
 
-			for h := 0; h < len(Hosts[domain]); h++ {
+			for h := 0; h < len(ips); h++ {
 
-				if Hosts[domain][h] == ip {
+				if ips[h] == ip {
 					found = true
 					break
 				}
@@ -59,62 +84,94 @@ func addHost(domain string, ip_raw string) {
 
 }
 
-func init() {
+func extractManagedBlock(content string) string {
 
-	Hosts = make(map[string][]string)
+	lines := strings.Split(content, "\n")
 
-	_, err1 := os.Stat("/etc/hosts")
+	begin := -1
+	end := -1
 
-	if err1 == nil {
+	for l := 0; l < len(lines); l++ {
 
-		SUPPORTED = true
+		trimmed := strings.TrimSpace(lines[l])
 
-		buffer, err2 := os.ReadFile("/etc/hosts")
+		if trimmed == beginMarker {
+			begin = l
+		}
 
-		if err2 == nil {
+		if begin != -1 && trimmed == endMarker {
+			end = l
+			break
+		}
 
-			var lines = strings.Split(strings.TrimSpace(string(buffer)), "\n")
+	}
 
-			for l := 0; l < len(lines); l++ {
+	if begin == -1 || end == -1 || end <= begin {
+		return ""
+	}
 
-				var line = strings.TrimSpace(lines[l])
+	return strings.Join(lines[begin+1:end], "\n")
 
-				if strings.Contains(line, "#") {
-					line = strings.TrimSpace(line[0:strings.Index(line, "#")])
-				}
+}
 
-				if len(line) > 0 {
+func parseManagedBlock(content string) {
 
-					entry := splitLine(line, " ")
+	lines := strings.Split(extractManagedBlock(content), "\n")
 
-					if len(entry) > 2 {
+	for l := 0; l < len(lines); l++ {
 
-						for e := 1; e < len(entry); e++ {
+		line := strings.TrimSpace(lines[l])
 
-							var ip = entry[0]
-							var host = entry[e]
+		if strings.Contains(line, "#") {
+			line = strings.TrimSpace(line[0:strings.Index(line, "#")])
+		}
 
-							if types.IsDomain(host) || strings.Contains(host, ".") == false {
-								addHost(host, ip)
-							}
+		if len(line) > 0 {
 
-						}
+			entry := splitLine(line, " ")
 
-					} else if len(entry) == 2 {
+			if len(entry) >= 2 {
 
-						var ip = entry[0]
-						var host = entry[1]
+				ip := entry[0]
 
-						if types.IsDomain(host) || strings.Contains(host, ".") == false {
-							addHost(host, ip)
-						}
-
-					}
-
+				for e := 1; e < len(entry); e++ {
+					addHost(entry[e], ip)
 				}
 
 			}
 
+		}
+
+	}
+
+}
+
+func fileIsWritable(path string) bool {
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+
+	if err != nil {
+		return false
+	}
+
+	file.Close()
+
+	return true
+
+}
+
+func init() {
+
+	Hosts = make(map[string][]string)
+
+	if fileIsWritable(hostsPath) == true {
+
+		SUPPORTED = true
+
+		buffer, err := os.ReadFile(hostsPath)
+
+		if err == nil {
+			parseManagedBlock(string(buffer))
 		}
 
 	}

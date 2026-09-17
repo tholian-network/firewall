@@ -4,24 +4,27 @@ import "tholian-firewall/console"
 
 func ForbidDomain(domain string) bool {
 
-	var result bool = false
-
-	if SUPPORTED == true {
-
-		if isForbiddenDomain(domain) {
-
-			result = true
-
-		} else {
-
-			console.Warn("adapters/hosts: Forbid Domain \"" + domain + "\"")
-			Hosts[domain] = []string{"0.0.0.0"}
-			result = saveHosts()
-
-		}
-
+	if SUPPORTED == false {
+		return false
 	}
 
-	return result
+	domain = normalizeDomain(domain)
+
+	if domain == "" {
+		return false
+	}
+
+	hostsMutex.Lock()
+	defer hostsMutex.Unlock()
+
+	if isForbiddenDomain(domain) == true {
+		return true
+	}
+
+	console.Warn("adapters/hosts: Forbid Domain \"" + domain + "\"")
+
+	Hosts[domain] = []string{sinkIPv4, sinkIPv6}
+
+	return saveHosts()
 
 }

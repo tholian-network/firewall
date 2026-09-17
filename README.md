@@ -105,7 +105,7 @@ sudo tholian-firewall forbid "[fe80::1337]:1338";
 # Block a domain: drops its DNS responses and bans the resolved IPs
 sudo tholian-firewall forbid "evil.example";
 
-# Check (exit 0 = allowed, 1 = forbidden, 3 = no eBPF backend)
+# Check (exit 0 = allowed, 1 = forbidden, 3 = no backend)
 sudo tholian-firewall check "1.3.3.7";
 
 # Look up the network/ASN data for an address

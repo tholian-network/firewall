@@ -1,176 +1,83 @@
 package iptables
 
-import "tholian-firewall/types"
-import "os/exec"
 import "strconv"
+
+func subnetSpec(address string, prefix uint8) (string, string) {
+
+	program, addr := resolveProgram(address)
+
+	if program == "" || prefix == 0 {
+		return "", ""
+	}
+
+	mask := strconv.FormatUint(uint64(prefix), 10)
+
+	return program, addr + "/" + mask
+
+}
 
 func isForbiddenSubnet(chain string, address string, prefix uint8) bool {
 
-	var program string
+	program, spec := subnetSpec(address, prefix)
 
-	if types.IsIPv6(address) {
-
-		ipv6 := types.ParseIPv6(address)
-
-		if ipv6 != nil {
-			tmp := ipv6.String()
-			address = tmp[1 : len(tmp)-1]
-			program = "ip6tables"
-		}
-
-	} else if types.IsIPv4(address) {
-
-		ipv4 := types.ParseIPv4(address)
-
-		if ipv4 != nil {
-			address = ipv4.String()
-			program = "iptables"
-		}
-
+	if program == "" {
+		return false
 	}
 
-	var result bool = false
-
-	if program != "" && prefix != 0 {
-
-		mask := strconv.FormatUint(uint64(prefix), 10)
-
-		if chain == "INPUT" {
-
-			cmd := exec.Command(program, "-C", "INPUT", "-s", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		} else if chain == "OUTPUT" {
-
-			cmd := exec.Command(program, "-C", "OUTPUT", "-d", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		}
-
+	if chain == "INPUT" {
+		return ruleExists(program, "-C", "INPUT", "-s", spec, "-j", "DROP")
+	} else if chain == "OUTPUT" {
+		return ruleExists(program, "-C", "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
-	return result
+	return false
 
 }
 
 func forbidSubnet(chain string, address string, prefix uint8) bool {
 
-	var program string
+	program, spec := subnetSpec(address, prefix)
 
-	if types.IsIPv6(address) {
-
-		ipv6 := types.ParseIPv6(address)
-
-		if ipv6 != nil {
-			tmp := ipv6.String()
-			address = tmp[1 : len(tmp)-1]
-			program = "ip6tables"
-		}
-
-	} else if types.IsIPv4(address) {
-
-		ipv4 := types.ParseIPv4(address)
-
-		if ipv4 != nil {
-			address = ipv4.String()
-			program = "iptables"
-		}
-
+	if program == "" {
+		return false
 	}
 
-	var result bool = false
-
-	if program != "" && prefix != 0 {
-
-		mask := strconv.FormatUint(uint64(prefix), 10)
-
-		if chain == "INPUT" {
-
-			cmd := exec.Command(program, "-A", "INPUT", "-s", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		} else if chain == "OUTPUT" {
-
-			cmd := exec.Command(program, "-A", "OUTPUT", "-d", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		}
-
+	if chain == "INPUT" {
+		return addRuleOnce(program, "INPUT", "-s", spec, "-j", "DROP")
+	} else if chain == "OUTPUT" {
+		return addRuleOnce(program, "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
-	return result
+	return false
 
 }
 
 func permitSubnet(chain string, address string, prefix uint8) bool {
 
-	var program string
+	program, spec := subnetSpec(address, prefix)
 
-	if types.IsIPv6(address) {
-
-		ipv6 := types.ParseIPv6(address)
-
-		if ipv6 != nil {
-			tmp := ipv6.String()
-			address = tmp[1 : len(tmp)-1]
-			program = "ip6tables"
-		}
-
-	} else if types.IsIPv4(address) {
-
-		ipv4 := types.ParseIPv4(address)
-
-		if ipv4 != nil {
-			address = ipv4.String()
-			program = "iptables"
-		}
-
+	if program == "" {
+		return false
 	}
 
-	var result bool = false
-
-	if program != "" && prefix != 0 {
-
-		mask := strconv.FormatUint(uint64(prefix), 10)
-
-		if chain == "INPUT" {
-
-			cmd := exec.Command(program, "-D", "INPUT", "-s", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		} else if chain == "OUTPUT" {
-
-			cmd := exec.Command(program, "-D", "OUTPUT", "-d", address+"/"+mask, "-j", "DROP")
-			_, err := cmd.Output()
-
-			if err == nil {
-				result = true
-			}
-
-		}
-
+	if chain == "INPUT" {
+		return deleteRuleOnce(program, "INPUT", "-s", spec, "-j", "DROP")
+	} else if chain == "OUTPUT" {
+		return deleteRuleOnce(program, "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
-	return result
+	return false
 
+}
+
+func ForbidSubnet(address string, prefix uint8) bool {
+	return forbidSubnet("INPUT", address, prefix) && forbidSubnet("OUTPUT", address, prefix)
+}
+
+func PermitSubnet(address string, prefix uint8) bool {
+	return permitSubnet("INPUT", address, prefix) && permitSubnet("OUTPUT", address, prefix)
+}
+
+func IsForbiddenSubnet(address string, prefix uint8) bool {
+	return isForbiddenSubnet("INPUT", address, prefix) || isForbiddenSubnet("OUTPUT", address, prefix)
 }

@@ -1,7 +1,5 @@
 package actions
 
-import "tholian-firewall/adapters/mitigations/ebpf"
-
 func Forbid(target string) bool {
 
 	parsed := ParseTarget(target)
@@ -11,7 +9,7 @@ func Forbid(target string) bool {
 	} else if parsed.Kind == "connection" {
 		return ForbidConnection(parsed.Connection)
 	} else if parsed.Kind == "domain" {
-		return ebpf.ForbidAddress(parsed.Domain)
+		return forbidDomain(parsed.Domain)
 	}
 
 	return false

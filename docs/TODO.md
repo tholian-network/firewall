@@ -15,13 +15,6 @@
 - [ ] Disallow DoH/DoT to avoid bypasses
 - [ ] DNS TXT exfiltration detection
 
-### Fallback Adapters
-
-- [ ] Wire `hosts` fallback for bare domains
-- [ ] Ensure fallback adapters work correctly
-- [ ] Protocol-aware host+port handling
-- [ ] Safe `/etc/hosts` managed-block editing
-
 ### Tests
 
 - [ ] `structs.Internet` tests with a small fixture

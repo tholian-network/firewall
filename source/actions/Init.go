@@ -1,19 +1,17 @@
 package actions
 
 import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/hosts"
+import "tholian-firewall/adapters/mitigations/iptables"
 
 func Init() bool {
 
-	var attached int = 0
-
 	if ebpf.SUPPORTED == true {
-		attached = ebpf.AttachAll()
+		if ebpf.AttachAll() > 0 {
+			return true
+		}
 	}
 
-	if ebpf.SUPPORTED == true && attached > 0 {
-		return true
-	}
-
-	return false
+	return iptables.SUPPORTED == true || hosts.SUPPORTED == true
 
 }

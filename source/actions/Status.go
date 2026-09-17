@@ -1,13 +1,43 @@
 package actions
 
 import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/adapters/mitigations/hosts"
+import "tholian-firewall/adapters/mitigations/iptables"
 
 func Status() []string {
 
+	var result []string
+
 	if ebpf.SUPPORTED == true {
-		return ebpf.Status()
+
+		entries := ebpf.Status()
+
+		for e := 0; e < len(entries); e++ {
+			result = append(result, "ebpf "+entries[e])
+		}
+
 	}
 
-	return nil
+	if iptables.SUPPORTED == true {
+
+		entries := iptables.Status()
+
+		for e := 0; e < len(entries); e++ {
+			result = append(result, "iptables "+entries[e])
+		}
+
+	}
+
+	if hosts.SUPPORTED == true {
+
+		entries := hosts.Status()
+
+		for e := 0; e < len(entries); e++ {
+			result = append(result, "hosts "+entries[e])
+		}
+
+	}
+
+	return result
 
 }

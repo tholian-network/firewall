@@ -1,6 +1,5 @@
 package actions
 
-import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/insights"
 import "tholian-firewall/structs"
 
@@ -13,20 +12,20 @@ func Check(target string) bool {
 	if parsed.Kind == "connection" {
 
 		if parsed.Connection.Socket.Host != "" && parsed.Connection.Socket.Host != "any" {
-			if ebpf.IsForbiddenAddress(parsed.Connection.Socket.Host) {
+			if isForbiddenAddress(parsed.Connection.Socket.Host) == true {
 				result = true
 			}
 		}
 
 		if result == false && parsed.Connection.Socket.Port != 0 {
-			if ebpf.IsForbiddenPort(parsed.Connection.Socket.Port) {
+			if isForbiddenPort(parsed.Connection.Socket.Port) == true {
 				result = true
 			}
 		}
 
 	} else if parsed.Kind == "domain" {
 
-		if ebpf.IsForbiddenAddress(parsed.Domain) {
+		if isForbiddenDomain(parsed.Domain) == true {
 			result = true
 		}
 
@@ -36,13 +35,9 @@ func Check(target string) bool {
 
 			subnet := structs.ToSubnet(parsed.Network.Subnet)
 
-			if subnet.IsValid() {
+			if subnet.IsValid() == true {
 
-				if ebpf.IsForbiddenSubnet(subnet.Address, subnet.Prefix) {
-					result = true
-				}
-
-				if result == false && ebpf.IsForbiddenAddress(subnet.Address) {
+				if isForbiddenSubnetOrAddress(subnet) == true {
 					result = true
 				}
 
@@ -54,7 +49,7 @@ func Check(target string) bool {
 
 			for s := 0; s < len(network.Subnets); s++ {
 
-				if ebpf.IsForbiddenSubnet(network.Subnets[s].Address, network.Subnets[s].Prefix) {
+				if isForbiddenSubnet(network.Subnets[s].Address, network.Subnets[s].Prefix) == true {
 					result = true
 					break
 				}

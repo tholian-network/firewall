@@ -1,7 +1,5 @@
 package actions
 
-import "tholian-firewall/adapters/mitigations/ebpf"
-import "tholian-firewall/adapters/mitigations/iptables"
 import "tholian-firewall/insights"
 import "tholian-firewall/matchers"
 import "tholian-firewall/structs"
@@ -10,62 +8,26 @@ func ForbidNetwork(search matchers.Network) bool {
 
 	var result bool = false
 
-	if ebpf.SUPPORTED == true {
+	if search.Name != "" && search.Name != "any" {
 
-		if search.Name != "" && search.Name != "any" {
+		network := insights.Internet.SearchASN(search.Name)
 
-			network := insights.Internet.SearchASN(search.Name)
+		if network.IsValid() {
 
-			if network.IsValid() {
-
-				if ebpf.ForbidNetwork(network) == true {
-					result = true
-				}
-
-			}
-
-		} else if search.Subnet != "" {
-
-			subnet := insights.Internet.Search(search.Subnet)
-			network := structs.NewNetwork(subnet.Name)
-			network.AddSubnet(subnet)
-
-			if network.IsValid() {
-
-				if ebpf.ForbidNetwork(network) == true {
-					result = true
-				}
-
+			if forbidNetwork(network) == true {
+				result = true
 			}
 
 		}
 
-	} else if iptables.SUPPORTED == true {
+	} else if search.Subnet != "" && search.Subnet != "any" {
 
-		if search.Name != "" && search.Name != "any" {
+		subnet := structs.ToSubnet(search.Subnet)
 
-			network := insights.Internet.SearchASN(search.Name)
+		if subnet.IsValid() {
 
-			if network.IsValid() {
-
-				if iptables.ForbidNetwork(network) == true {
-					result = true
-				}
-
-			}
-
-		} else if search.Subnet != "" {
-
-			subnet := insights.Internet.Search(search.Subnet)
-			network := structs.NewNetwork(subnet.Name)
-			network.AddSubnet(subnet)
-
-			if network.IsValid() {
-
-				if iptables.ForbidNetwork(network) == true {
-					result = true
-				}
-
+			if forbidSubnetOrAddress(subnet) == true {
+				result = true
 			}
 
 		}
