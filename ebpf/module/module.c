@@ -24,11 +24,11 @@ struct ipv6_subnet {
 	__u8  address[16];
 };
 
-// Max usage: ~16MB (16711425 bytes)
+// Max usage: ~1MB (1048560 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 65535);
-	__uint(key, 254);    // FQDN, host byte order (little endian)
+	__type(key, __u64);  // FNV-1a hash of the lowercased FQDN
 	__type(value, __u8); // 1 = banned, 0 = unbanned
 } domain_bans SEC(".maps");
 
@@ -146,7 +146,7 @@ static __always_inline bool is_filtered_ipv4(struct ipv4_subnet *subnet) {
 
 	banned = bpf_map_lookup_elem(&ipv4_bans, subnet);
 
-	if (banned != NULL && banned != 0) {
+	if (banned != NULL && *banned != 0) {
 		return true;
 	}
 
@@ -160,7 +160,7 @@ static __always_inline bool is_filtered_ipv6(struct ipv6_subnet *subnet) {
 
 	banned = bpf_map_lookup_elem(&ipv6_bans, subnet);
 
-	if (banned != NULL && banned != 0) {
+	if (banned != NULL && *banned != 0) {
 		return true;
 	}
 
@@ -174,7 +174,7 @@ static __always_inline bool is_filtered_port(__u16 port) {
 
 	blocked_port = bpf_map_lookup_elem(&port_bans, &port);
 
-	if (blocked_port != NULL && blocked_port != 0) {
+	if (blocked_port != NULL && *blocked_port != 0) {
 		return true;
 	}
 
@@ -182,36 +182,69 @@ static __always_inline bool is_filtered_port(__u16 port) {
 
 }
 
+#ifdef ENABLE_DNSFILTER
+
+static __always_inline bool is_domain_banned(__u64 hash) {
+
+	__u8 *banned = NULL;
+
+	banned = bpf_map_lookup_elem(&domain_bans, &hash);
+
+	if (banned != NULL && *banned != 0) {
+		return true;
+	}
+
+	return false;
+
+}
+
+static __always_inline bool filter_dns(struct hdr_cursor *cursor, void *data_end, struct dnshdr *dns_header) {
+
+	if (dns_header == NULL) {
+		return false;
+	}
+
+	__u16 flags = bpf_ntohs(dns_header->flags);
+
+	if ((flags & 0x8000) == 0) {
+		return false;
+	}
+
+	__u16 q_count = bpf_ntohs(dns_header->q_count);
+
+	if (q_count == 0) {
+		return false;
+	}
+
+	__u64 banned_hash = 0;
+	void *next = dns_hash_wire((const char *) cursor->pos, data_end, &banned_hash);
+
+	if (next == NULL) {
+		return false;
+	}
+
+	return is_domain_banned(banned_hash);
+
+}
+
+#endif
+
 static __always_inline bool is_filtered_icmp_packet(struct icmphdr *icmp_header) {
 
 	int type = icmp_header->type;
 
 	if (
 		type == 0 // echo reply
-		|| type == 1 // reserved
-		|| type == 2 // reserved
-		|| type == 4 // source quench
-		|| type == 6 // deprecated (alternate host address)
-		|| type == 7 // reserved
+		|| type == 3 // destination unreachable
+		|| type == 5 // redirect
 		|| type == 8 // echo request
-		|| type == 9 // router advertisement
-		|| type == 10 // router solicitation
-		|| type == 13 // timestamp request
-		|| type == 14 // timestamp reply
-		|| type == 15 // deprecated (information request)
-		|| type == 16 // deprecated (information reply)
-		|| type == 17 // deprecated (address mask request)
-		|| type == 18 // deprecated (address mask reply)
-		|| type == 19 // reserved
-		|| (type >= 20 && type <= 41) // reserved
-		|| type == 42 // extended echo request
-		|| type == 43 // extended echo request
-		|| (type >= 44 && type <= 255) // reserved
+		|| type == 11 // time exceeded
+		|| type == 12 // parameter problem
 	) {
-		return true;
+		return false;
 	}
 
-	return false;
+	return true;
 
 }
 
@@ -220,43 +253,22 @@ static __always_inline bool is_filtered_icmp6_packet(struct icmp6hdr *icmp6_head
 	int type = icmp6_header->icmp6_type;
 
 	if (
-		type == 0 // echo reply
-		|| type == 1 // reserved
-		|| type == 2 // reserved
-		|| type == 4 // source quench
-		|| type == 6 // deprecated (alternate host address)
-		|| type == 7 // reserved
-		|| type == 8 // echo request
-		|| type == 9 // router advertisement
-		|| type == 10 // router solicitation
-		|| type == 13 // timestamp request
-		|| type == 14 // timestamp reply
-		|| type == 15 // deprecated (information request)
-		|| type == 16 // deprecated (information reply)
-		|| type == 17 // deprecated (address mask request)
-		|| type == 18 // deprecated (address mask reply)
-		|| type == 19 // reserved
-		|| (type >= 20 && type <= 41) // reserved
-		|| type == 42 // extended echo request
-		|| type == 43 // extended echo request
-		|| (type >= 44 && type <= 127) // reserved
+		type == 1 // destination unreachable
+		|| type == 2 // packet too big
+		|| type == 3 // time exceeded
+		|| type == 4 // parameter problem
 		|| type == 128 // echo request
 		|| type == 129 // echo reply
 		|| type == 133 // router solicitation
 		|| type == 134 // router advertisement
 		|| type == 135 // neighbor solicitation
 		|| type == 136 // neighbor advertisement
-		|| type == 150 // reserved
-		|| type == 151 // multicast router advertisement
-		|| type == 152 // multicast router solicitation
-		|| type == 153 // multicast router termination
-		|| type == 154 // reserved
-		|| (type >= 156 && type <= 255) // reserved
+		|| type == 137 // redirect
 	) {
-		return true;
+		return false;
 	}
 
-	return false;
+	return true;
 
 }
 
@@ -306,7 +318,7 @@ static __always_inline bool is_likely_nmap_tcp_scan(struct tcphdr *tcp_header) {
 		&& tcp_header->psh == 0
 		&& tcp_header->rst == 0
 		&& tcp_header->syn == 1
-		&& tcp_header->window == 61690
+		&& bpf_ntohs(tcp_header->window) == 61690
 	) {
 		return true;
 	}
@@ -404,23 +416,18 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 			if (
 				port_source == bpf_htons(53)
-				|| port_source == bpf_htons(853)
 				|| port_source == bpf_htons(5353)
 				|| port_dest == bpf_htons(53)
-				|| port_dest == bpf_htons(853)
 				|| port_dest == bpf_htons(5353)
 			) {
 
 				struct dnshdr *dns_header = NULL;
 
-				int length = parse_dnshdr(&cursor, data_end, &dns_header);
-				if (length < 0) {
-					return XDP_DROP;
+				if (parse_dnshdr(&cursor, data_end, &dns_header) >= 0) {
+					if (filter_dns(&cursor, data_end, dns_header) == true) {
+						return XDP_DROP;
+					}
 				}
-
-				bpf_printk("ETH_P_IP/UDP port %d -> %d", bpf_ntohs(port_source), bpf_ntohs(port_dest));
-				bpf_printk("%pI4", &ipv4_source.address);
-				bpf_printk("%pI4", &ipv4_dest.address);
 
 			}
 
@@ -456,23 +463,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 				return XDP_DROP;
 			}
 
-#ifdef ENABLE_DNSFILTER
 
-			if (
-				port_source == bpf_htons(53)
-				|| port_source == bpf_htons(853)
-				|| port_source == bpf_htons(5353)
-				|| port_dest == bpf_htons(53)
-				|| port_dest == bpf_htons(853)
-				|| port_dest == bpf_htons(5353)
-			) {
-
-				// TODO: struct dnshdr *dns_header = NULL;
-				// TODO: dnshdr is offsetted by two bytes which represent the length
-
-			}
-
-#endif
 
 		} else if (protocol == IPPROTO_ICMP) {
 
@@ -550,23 +541,6 @@ int xdp_prog_main(struct xdp_md *ctx) {
 					return XDP_DROP;
 				}
 
-#ifdef ENABLE_DNSFILTER
-
-				if (
-					port_source == bpf_htons(53)
-					|| port_source == bpf_htons(853)
-					|| port_source == bpf_htons(5353)
-					|| port_dest == bpf_htons(53)
-					|| port_dest == bpf_htons(853)
-					|| port_dest == bpf_htons(5353)
-				) {
-
-					// TODO: struct dnshdr *dns_header = NULL;
-
-				}
-
-#endif
-
 			} else if (protocol == IPPROTO_TCP) {
 
 				struct tcphdr *tcp_header = NULL;
@@ -596,23 +570,6 @@ int xdp_prog_main(struct xdp_md *ctx) {
 				if (is_filtered_port(port_dest) == true) {
 					return XDP_DROP;
 				}
-
-#ifdef ENABLE_DNSFILTER
-
-				if (
-					port_source == bpf_htons(53)
-					|| port_source == bpf_htons(853)
-					|| port_source == bpf_htons(5353)
-					|| port_dest == bpf_htons(53)
-					|| port_dest == bpf_htons(853)
-					|| port_dest == bpf_htons(5353)
-				) {
-
-					// TODO: struct dnshdr *dns_header = NULL;
-
-				}
-
-#endif
 
 			} else if (protocol == IPPROTO_ICMP) {
 

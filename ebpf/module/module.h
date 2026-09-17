@@ -25,6 +25,13 @@
 #define IPV6EXT_MAX_DEPTH 6
 #endif
 
+#ifndef DNS_MAX_NAME_BYTES
+#define DNS_MAX_NAME_BYTES 128
+#endif
+
+#define FNV_OFFSET 14695981039346656037ULL
+#define FNV_PRIME  1099511628211ULL
+
 struct hdr_cursor {
 	void *pos;
 };
@@ -41,49 +48,12 @@ struct vlanhdr {
 };
 
 struct dnshdr {
-	__u16 transaction_id;
-	__u8 rd: 1;       // Recursion desired
-	__u8 tc: 1;       // Truncated
-	__u8 aa: 1;       // Authoritive answer
-	__u8 opcode: 4;   // Opcode
-	__u8 qr: 1;       // Query/response flag
-	__u8 rcode: 4;    // Response code
-	__u8 cd: 1;       // Checking disabled
-	__u8 ad: 1;       // Authenticated data
-	__u8 z: 1;        // Z reserved bit
-	__u8 ra: 1;       // Recursion available
-	__u16 q_count;    // Number of questions
-	__u16 ans_count;  // Number of answer RRs
-	__u16 auth_count; // Number of authority RRs
-	__u16 add_count;  // Number of resource RRs
-};
-
-struct dnsquestion {
-	char name[256];
-	__u16 type;
-	__u16 class;
-};
-
-struct dnsrecord {
-	char name[256];
-	__u16 type;
-	__u16 class;
-	__u32 ttl;
-	__u16 data_length;
-	char data[65535];
-};
-
-// TODO: Integrate other DNS types here, from IANA's list
-// https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
-enum {
-	DNS_TYPE_A = 1,
-	DNS_TYPE_NS = 2,
-	DNS_TYPE_CNAME = 5,
-	DNS_TYPE_MX = 15,
-	DNS_TYPE_TXT = 16,
-	DNS_TYPE_AAAA = 28,
-	DNS_TYPE_LOC = 29,
-	DNS_TYPE_SRV = 33,
+	__be16 transaction_id;
+	__be16 flags;
+	__be16 q_count;
+	__be16 ans_count;
+	__be16 auth_count;
+	__be16 add_count;
 };
 
 enum {
@@ -92,15 +62,6 @@ enum {
 	DNS_CLASS_CHAOSNET = 3,   // deprecated
 	DNS_CLASS_HESOIDNET = 4   // deprecated
 };
-
-// TODO: This is used as network response in case it was blocked on DNS level
-// struct dnsresponse {
-//    __u16 query_pointer;
-//    __u16 record_type;
-//    __u16 record_class;
-//    __u32 ttl;
-//    __u16 data_length;
-// } __attribute__((packed));
 
 #ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
@@ -277,24 +238,6 @@ static __always_inline int parse_udphdr(struct hdr_cursor *nh, void *data_end, s
 
 }
 
-#ifdef ENABLE_DNSFILTER
-static __always_inline int parse_dnshdr(struct hdr_cursor *nh, void *data_end, struct dnshdr **dnshdr) {
-
-	int len;
-	struct dnshdr *dnsh = nh->pos;
-
-	if (dnsh + 1 > data_end) {
-		return -1;
-	}
-
-	nh->pos = dnsh + 1;
-	*dnshdr = dnsh;
-
-	return len;
-
-}
-#endif
-
 static __always_inline int parse_tcphdr(struct hdr_cursor *nh, void *data_end, struct tcphdr **tcphdr) {
 
 	int len;
@@ -305,17 +248,82 @@ static __always_inline int parse_tcphdr(struct hdr_cursor *nh, void *data_end, s
 	}
 
 	len = tcph->doff * 4;
+	if (len < (int)sizeof(struct tcphdr)) {
+		return -1;
+	}
+
 	if ((void *) tcph + len > data_end) {
 		return -1;
 	}
 
-	nh->pos = tcph + 1;
+	nh->pos = (char *) tcph + len;
 	*tcphdr = tcph;
 
 	return len;
 
 }
 
+#ifdef ENABLE_DNSFILTER
 
+static __always_inline int parse_dnshdr(struct hdr_cursor *nh, void *data_end, struct dnshdr **dnshdr) {
+
+	struct dnshdr *dnsh = nh->pos;
+
+	if (dnsh + 1 > data_end) {
+		return -1;
+	}
+
+	nh->pos = dnsh + 1;
+	*dnshdr = dnsh;
+
+	return (int)sizeof(struct dnshdr);
+
+}
+
+static __always_inline void *dns_hash_wire(const char *start, void *data_end, __u64 *out_hash) {
+
+	__u64 hash = FNV_OFFSET;
+	const char *base = start;
+
+	for (int i = 0; i < DNS_MAX_NAME_BYTES; i++) {
+
+		if ((void *) base + i + 1 > data_end) {
+			return NULL;
+		}
+
+		__u8 b = *((const __u8 *) base + i);
+
+		if ((b & 0xc0) == 0xc0) {
+
+			if ((void *) base + i + 2 > data_end) {
+				return NULL;
+			}
+
+			*out_hash = 0;
+			return (void *) (base + i + 2);
+
+		}
+
+		__u8 c = b;
+
+		if (c >= 'A' && c <= 'Z') {
+			c = c | 0x20;
+		}
+
+		hash ^= c;
+		hash *= FNV_PRIME;
+
+		if (b == 0) {
+			*out_hash = hash;
+			return (void *) (base + i + 1);
+		}
+
+	}
+
+	return NULL;
+
+}
+
+#endif
 
 #endif
