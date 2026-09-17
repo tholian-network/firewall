@@ -9,8 +9,7 @@ build_ebpf() {
 
 	cd "${ROOT}/ebpf";
 
-	# TODO: Add -DENABLE_DNSFILTER once it's ready
-	${CLANG} -S -I"${ROOT}/ebpf/headers" -target bpf -O2 -Wall -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types -Werror -emit-llvm -g -c -o "${ROOT}/ebpf/module/module.ll" "${ROOT}/ebpf/module/module.c"
+	${CLANG} -S -I"${ROOT}/ebpf/headers" -target bpf -O2 -Wall -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types -DENABLE_DNSFILTER -Werror -emit-llvm -g -o "${ROOT}/ebpf/module/module.ll" "${ROOT}/ebpf/module/module.c"
 
 	if [[ "$?" == "0" ]]; then
 		echo -e "- Generate eBPF LLVM code: ${os} [\e[32mok\e[0m]";
