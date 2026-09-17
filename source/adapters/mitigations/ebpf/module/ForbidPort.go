@@ -7,7 +7,7 @@ func ForbidPort(port uint16) bool {
 
 	var result bool = false
 
-	if port > 0 && port < 65535 && port != 22 {
+	if port > 0 && port < 65535 {
 
 		if Module.PortBans != nil {
 

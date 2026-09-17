@@ -4,14 +4,34 @@ package module
 
 import "github.com/cilium/ebpf"
 import "github.com/cilium/ebpf/link"
+import "github.com/cilium/ebpf/rlimit"
 import "tholian-firewall/console"
+import "errors"
+import "strings"
 import "bytes"
 import _ "embed"
+
+func reportError(err error) {
+
+	var verifier *ebpf.VerifierError
+
+	if errors.As(err, &verifier) {
+		if len(verifier.Log) > 0 {
+			console.Error(strings.Join(verifier.Log, "\n"))
+		}
+	}
+
+	console.Error(err.Error())
+
+}
 
 //go:embed module.bpfeb
 var embedded_bpf_module []byte
 
 var Links map[string]*link.Link
+
+var Loaded bool
+var LoadError error
 
 var Module struct {
 	Program      *ebpf.Program `ebpf:"xdp_prog_main"`
@@ -23,27 +43,121 @@ var Module struct {
 	PortBans     *ebpf.Map     `ebpf:"port_bans"`
 }
 
+func probe() bool {
+
+	if Module.Program == nil || Module.PortBans == nil {
+		return false
+	}
+
+	var value uint8
+
+	err := Module.PortBans.Lookup(uint16(65534), &value)
+
+	if err == nil || errors.Is(err, ebpf.ErrKeyNotExist) {
+		return true
+	}
+
+	return false
+
+}
+
 func init() {
 
 	Links = make(map[string]*link.Link)
 
+	Loaded = false
+
+	if err := rlimit.RemoveMemlock(); err != nil {
+		console.Warn("adapters/ebpf: " + err.Error())
+	}
+
 	reader := bytes.NewReader(embedded_bpf_module)
 	spec, err1 := ebpf.LoadCollectionSpecFromReader(reader)
 
-	if err1 == nil {
+	if err1 != nil {
 
-		err2 := spec.LoadAndAssign(&Module, nil)
+		LoadError = err1
+		reportError(err1)
+		console.Error("adapters/ebpf: eBPF Module disabled")
 
-		if err2 == nil {
-			console.Info("adapters/ebpf: eBPF Module loaded")
-		} else {
-			console.Error(err2.Error())
-			console.Error("adapters/ebpf: eBPF Module disabled")
+		return
+
+	}
+
+	err2 := spec.LoadAndAssign(&Module, nil)
+
+	if err2 != nil {
+
+		LoadError = err2
+		reportError(err2)
+		console.Error("adapters/ebpf: eBPF Module disabled")
+
+		return
+
+	}
+
+	if probe() == false {
+
+		LoadError = errors.New("eBPF Module probe failed")
+		console.Error(LoadError.Error())
+		console.Error("adapters/ebpf: eBPF Module disabled")
+
+		return
+
+	}
+
+	Loaded = true
+	console.Info("adapters/ebpf: eBPF Module loaded")
+
+}
+
+func Close() {
+
+	for name, ref := range Links {
+
+		if ref != nil && *ref != nil {
+			(*ref).Close()
 		}
 
-	} else {
-		console.Error(err1.Error())
-		console.Error("adapters/ebpf: eBPF Module disabled")
+		delete(Links, name)
+
 	}
+
+	if Module.Program != nil {
+		Module.Program.Close()
+		Module.Program = nil
+	}
+
+	if Module.DomainBans != nil {
+		Module.DomainBans.Close()
+		Module.DomainBans = nil
+	}
+
+	if Module.IPv4Bans != nil {
+		Module.IPv4Bans.Close()
+		Module.IPv4Bans = nil
+	}
+
+	if Module.IPv4Warnings != nil {
+		Module.IPv4Warnings.Close()
+		Module.IPv4Warnings = nil
+	}
+
+	if Module.IPv6Bans != nil {
+		Module.IPv6Bans.Close()
+		Module.IPv6Bans = nil
+	}
+
+	if Module.IPv6Warnings != nil {
+		Module.IPv6Warnings.Close()
+		Module.IPv6Warnings = nil
+	}
+
+	if Module.PortBans != nil {
+		Module.PortBans.Close()
+		Module.PortBans = nil
+	}
+
+	Loaded = false
 
 }

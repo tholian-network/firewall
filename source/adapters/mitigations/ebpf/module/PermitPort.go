@@ -1,12 +1,13 @@
 package module
 
 import "github.com/cilium/ebpf"
+import "errors"
 
 func PermitPort(port uint16) bool {
 
 	var result bool = false
 
-	if port > 0 && port < 65535 && port != 22 {
+	if port > 0 && port < 65535 {
 
 		if Module.PortBans != nil {
 
@@ -14,7 +15,7 @@ func PermitPort(port uint16) bool {
 
 			if err == nil {
 				result = true
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = true
 			}
 

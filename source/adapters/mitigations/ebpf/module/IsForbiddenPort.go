@@ -1,6 +1,7 @@
 package module
 
 import "github.com/cilium/ebpf"
+import "errors"
 
 func IsForbiddenPort(port uint16) bool {
 
@@ -20,7 +21,7 @@ func IsForbiddenPort(port uint16) bool {
 					result = true
 				}
 
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = false
 			}
 

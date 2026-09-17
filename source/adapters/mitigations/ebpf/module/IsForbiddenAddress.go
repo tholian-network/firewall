@@ -2,6 +2,7 @@ package module
 
 import "github.com/cilium/ebpf"
 import "tholian-firewall/types"
+import "errors"
 
 func IsForbiddenAddress(address string) bool {
 
@@ -21,7 +22,7 @@ func IsForbiddenAddress(address string) bool {
 					result = true
 				}
 
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = false
 			}
 
@@ -41,7 +42,7 @@ func IsForbiddenAddress(address string) bool {
 					result = true
 				}
 
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = false
 			}
 
@@ -61,7 +62,7 @@ func IsForbiddenAddress(address string) bool {
 					result = true
 				}
 
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = false
 			}
 

@@ -2,6 +2,7 @@ package module
 
 import "github.com/cilium/ebpf"
 import "tholian-firewall/types"
+import "errors"
 
 func PermitSubnet(address string, prefix uint8) bool {
 
@@ -15,7 +16,7 @@ func PermitSubnet(address string, prefix uint8) bool {
 
 			if err == nil {
 				result = true
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = true
 			}
 
@@ -29,7 +30,7 @@ func PermitSubnet(address string, prefix uint8) bool {
 
 			if err == nil {
 				result = true
-			} else if err == ebpf.ErrKeyNotExist {
+			} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 				result = true
 			}
 

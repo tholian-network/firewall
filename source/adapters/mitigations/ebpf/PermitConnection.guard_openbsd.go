@@ -2,7 +2,7 @@
 
 package ebpf
 
-import "tholian-endpoint/types"
+import "tholian-firewall/types"
 
 func PermitConnection(connection types.Connection) bool {
 

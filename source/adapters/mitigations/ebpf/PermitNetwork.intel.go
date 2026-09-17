@@ -2,7 +2,7 @@
 
 package ebpf
 
-import "tholian-endpoint/structs"
+import "tholian-firewall/structs"
 
 func PermitNetwork(network structs.Network) bool {
 	return false

@@ -2,6 +2,7 @@ package module
 
 import "github.com/cilium/ebpf"
 import "tholian-firewall/types"
+import "errors"
 
 func IsForbiddenSubnet(address string, prefix uint8) bool {
 
@@ -9,7 +10,7 @@ func IsForbiddenSubnet(address string, prefix uint8) bool {
 
 	if types.IsIPv6(address) {
 
-		if prefix >= 8 && prefix < 128 {
+		if prefix >= 8 && prefix <= 128 {
 
 			if Module.IPv6Bans != nil {
 
@@ -23,7 +24,7 @@ func IsForbiddenSubnet(address string, prefix uint8) bool {
 						result = true
 					}
 
-				} else if err == ebpf.ErrKeyNotExist {
+				} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 					result = false
 				}
 
@@ -33,7 +34,7 @@ func IsForbiddenSubnet(address string, prefix uint8) bool {
 
 	} else if types.IsIPv4(address) {
 
-		if prefix >= 8 && prefix < 32 {
+		if prefix >= 8 && prefix <= 32 {
 
 			if Module.IPv4Bans != nil {
 
@@ -47,7 +48,7 @@ func IsForbiddenSubnet(address string, prefix uint8) bool {
 						result = true
 					}
 
-				} else if err == ebpf.ErrKeyNotExist {
+				} else if errors.Is(err, ebpf.ErrKeyNotExist) {
 					result = false
 				}
 
