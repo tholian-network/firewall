@@ -21,7 +21,7 @@ func PermitNetworks(searches []matchers.Network) bool {
 
 		search := searches[s]
 
-		if search.Name != "" {
+		if search.Name != "" && search.Name != "any" {
 
 			network := insights.Internet.SearchASN(search.Name)
 

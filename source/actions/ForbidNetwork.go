@@ -12,7 +12,7 @@ func ForbidNetwork(search matchers.Network) bool {
 
 	if ebpf.SUPPORTED == true {
 
-		if search.Name != "" {
+		if search.Name != "" && search.Name != "any" {
 
 			network := insights.Internet.SearchASN(search.Name)
 
@@ -42,7 +42,7 @@ func ForbidNetwork(search matchers.Network) bool {
 
 	} else if iptables.SUPPORTED == true {
 
-		if search.Name != "" {
+		if search.Name != "" && search.Name != "any" {
 
 			network := insights.Internet.SearchASN(search.Name)
 
