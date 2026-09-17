@@ -86,67 +86,74 @@ type IPv6 [16]byte
 
 func IsIPv6(value string) bool {
 
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+	inner := value
 
-		value = formatIPv6(value)
+	if strings.HasPrefix(inner, "[") || strings.HasSuffix(inner, "]") {
 
-		// Ignore embedded IPv6::IPv4 syntax
-		if !strings.Contains(value[1:len(value)-1], ".") {
-
-			tmp := strings.Split(value[1:len(value)-1], ":")
-
-			if len(tmp) == 8 {
-
-				valid := true
-
-				for t := 0; t < len(tmp); t++ {
-
-					_, err := strconv.ParseUint(tmp[t], 16, 64)
-
-					if err != nil {
-						valid = false
-						break
-					}
-
-				}
-
-				return valid
-
-			}
-
-		}
-
-	} else if strings.Contains(value, ":") {
-
-		// Ignore embedded IPv6::IPv4 syntax
-		if !strings.Contains(value[1:len(value)-1], ".") {
-
-			tmp := strings.Split(formatIPv6(value), ":")
-
-			if len(tmp) == 8 {
-
-				valid := true
-
-				for t := 0; t < len(tmp); t++ {
-
-					_, err := strconv.ParseUint(tmp[t], 16, 64)
-
-					if err != nil {
-						valid = false
-						break
-					}
-
-				}
-
-				return valid
-
-			}
-
+		if strings.HasPrefix(inner, "[") && strings.HasSuffix(inner, "]") {
+			inner = inner[1 : len(inner)-1]
+		} else {
+			return false
 		}
 
 	}
 
-	return false
+	// Ignore embedded IPv6::IPv4 syntax
+	if strings.Contains(inner, ".") {
+		return false
+	}
+
+	if strings.Contains(inner, ":") == false {
+		return false
+	}
+
+	if strings.Count(inner, "::") > 1 {
+		return false
+	}
+
+	groups := make([]string, 0)
+
+	if strings.Contains(inner, "::") {
+
+		parts := strings.SplitN(inner, "::", 2)
+
+		if parts[0] != "" {
+			groups = append(groups, strings.Split(parts[0], ":")...)
+		}
+
+		if parts[1] != "" {
+			groups = append(groups, strings.Split(parts[1], ":")...)
+		}
+
+		if len(groups) > 8 {
+			return false
+		}
+
+	} else {
+
+		groups = strings.Split(inner, ":")
+
+		if len(groups) != 8 {
+			return false
+		}
+
+	}
+
+	for g := 0; g < len(groups); g++ {
+
+		if len(groups[g]) < 1 || len(groups[g]) > 4 {
+			return false
+		}
+
+		_, err := strconv.ParseUint(groups[g], 16, 64)
+
+		if err != nil {
+			return false
+		}
+
+	}
+
+	return true
 
 }
 
@@ -160,7 +167,7 @@ func IsIPv6AndPrefix(value string) bool {
 
 			prefix, err := strconv.ParseUint(tmp[1], 10, 64)
 
-			if IsIPv6("[" + value + "]") && err == nil && prefix >= 8 && prefix <= 128 {
+			if IsIPv6("["+tmp[0]+"]") && err == nil && prefix >= 8 && prefix <= 128 {
 				return true
 			}
 
@@ -182,7 +189,7 @@ func IsIPv6AndPort(value string) bool {
 
 			_, err := strconv.ParseUint(tmp[1], 10, 16)
 
-			if IsIPv6("[" + value + "]") && err == nil {
+			if IsIPv6("["+tmp[0]+"]") && err == nil {
 				return true
 			}
 
@@ -333,12 +340,16 @@ func (ipv6 IPv6) Scope() string {
 		"0000:0000:0000:0000:0000:0000:0000:0000",
 		"0000:0000:0000:0000:0000:0000:0000:0001",
 		"fe80:0000:0000:0000",
+
+		// RFC4193 (unique local addresses)
+		"fc00:",
+		"fd00:",
 	}
 	value := ipv6.String()
 
 	for p := 0; p < len(private_ipv6s); p++ {
 
-		if strings.HasPrefix(value, "[" + private_ipv6s[p]) {
+		if strings.HasPrefix(value, private_ipv6s[p]) {
 			result = "private"
 			break
 		}
@@ -366,7 +377,7 @@ func (ipv6 IPv6) String() string {
 			hex2 = "0" + hex2
 		}
 
-		tmp[i / 2] = hex1 + hex2
+		tmp[i/2] = hex1 + hex2
 
 	}
 

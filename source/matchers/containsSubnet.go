@@ -9,7 +9,7 @@ func containsSubnet(subnet_a string, subnet_b string) bool {
 	address_a, prefix_a := toSubnet(subnet_a)
 	address_b, prefix_b := toSubnet(subnet_b)
 
-	if prefix_b > prefix_a {
+	if prefix_b >= prefix_a {
 
 		bytes_a := make([]byte, 0)
 		bytes_b := make([]byte, 0)
@@ -20,7 +20,7 @@ func containsSubnet(subnet_a string, subnet_b string) bool {
 			ipv6_b := types.ParseIPv6(address_b)
 
 			bytes_a = ipv6_a.Bytes(prefix_a)
-			bytes_b = ipv6_b.Bytes(prefix_b)
+			bytes_b = ipv6_b.Bytes(prefix_a)
 
 		} else if types.IsIPv4(address_a) && types.IsIPv4(address_b) {
 
@@ -28,7 +28,7 @@ func containsSubnet(subnet_a string, subnet_b string) bool {
 			ipv4_b := types.ParseIPv4(address_b)
 
 			bytes_a = ipv4_a.Bytes(prefix_a)
-			bytes_b = ipv4_b.Bytes(prefix_b)
+			bytes_b = ipv4_b.Bytes(prefix_a)
 
 		}
 
