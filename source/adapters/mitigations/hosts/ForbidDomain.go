@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-endpoint/console"
+import "tholian-firewall/console"
 
 func ForbidDomain(domain string) bool {
 

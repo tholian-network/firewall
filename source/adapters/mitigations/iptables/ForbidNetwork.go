@@ -8,20 +8,27 @@ func ForbidNetwork(network structs.Network) bool {
 
 	var result bool = false
 
-	if SUPPORTED == true {
+	if SUPPORTED == true && len(network.Subnets) > 0 {
+
+		result = true
+
+		chains := []string{"INPUT", "OUTPUT"}
 
 		for s := 0; s < len(network.Subnets); s++ {
 
 			subnet := network.Subnets[s]
 
-			if isForbiddenSubnet("INPUT", subnet.Address, subnet.Prefix) {
+			for c := 0; c < len(chains); c++ {
 
-				result = true
+				if isForbiddenSubnet(chains[c], subnet.Address, subnet.Prefix) == true {
+					continue
+				}
 
-			} else {
+				console.Warn("adapters/iptables: Forbid Network \"" + chains[c] + " " + subnet.Address + "/" + strconv.FormatUint(uint64(subnet.Prefix), 10) + "\"")
 
-				console.Warn("adapters/iptables: Forbid Network \"" + subnet.Address + "/" + strconv.FormatUint(uint64(subnet.Prefix), 10) + "\"")
-				result = forbidSubnet("INPUT", subnet.Address, subnet.Prefix)
+				if forbidSubnet(chains[c], subnet.Address, subnet.Prefix) == false {
+					result = false
+				}
 
 			}
 

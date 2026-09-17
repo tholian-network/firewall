@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-endpoint/types"
+import "tholian-firewall/types"
 import "os"
 import "strings"
 
