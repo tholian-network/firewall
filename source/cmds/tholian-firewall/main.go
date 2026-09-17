@@ -1,11 +1,9 @@
 package main
 
 import "tholian-firewall/actions"
+import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/console"
-import "tholian-firewall/matchers"
-import "tholian-firewall/types"
 import "os"
-import "strconv"
 
 func showUsage() {
 
@@ -28,13 +26,17 @@ func showUsage() {
 	console.Log("Connection | IP:Port           | Describes incoming and outgoing network traffic |")
 	console.GroupEnd("-----------|-------------------|-------------------------------------------------|")
 
-	console.Group("Action | Description                                                     |")
-	console.Log("-------|-----------------------------------------------------------------|")
-	console.Log("check  | Checks whether a Target's network traffic is already forbidden. |")
-	console.Log("forbid | Forbid a Target's network traffic.                              |")
-	console.Log("permit | Permit a Target's network traffic.                              |")
-	console.Log("search | Search for a Target's Network/ASN details.                      |")
-	console.GroupEnd("-------|-----------------------------------------------------------------|")
+	console.Group("Action   | Description                                                     |")
+	console.Log("---------|-----------------------------------------------------------------|")
+	console.Log("check    | Checks whether a Target's network traffic is already forbidden. |")
+	console.Log("forbid   | Forbid a Target's network traffic.                              |")
+	console.Log("permit   | Permit a Target's network traffic.                              |")
+	console.Log("search   | Search for a Target's Network/ASN details.                      |")
+	console.Log("init     | Load the eBPF Module and attach it to all interfaces.           |")
+	console.Log("load     | Load a rules file with line-separated instructions.             |")
+	console.Log("status   | Show the eBPF Module status of forbidden targets.               |")
+	console.Log("selftest | Run an in-process eBPF map round-trip self test.                |")
+	console.GroupEnd("---------|-----------------------------------------------------------------|")
 
 	console.Group("Examples")
 	console.Log("# ASN example")
@@ -55,221 +57,92 @@ func showUsage() {
 
 func main() {
 
-	if len(os.Args) == 3 {
+	if len(os.Args) >= 2 {
 
-		if os.Args[1] == "forbid" {
+		if os.Args[1] == "forbid" && len(os.Args) == 3 {
 
-			result := false
-
-			if types.IsASN(os.Args[2]) {
-
-				asn := types.ParseASN(os.Args[2])
-
-				if asn != nil {
-
-					network := matchers.NewNetwork()
-					network.SetName(asn.String())
-
-					result = actions.ForbidNetwork(network)
-
-				}
-
-			} else if types.IsIPv6AndPrefix(os.Args[2]) {
-
-				ipv6, prefix := types.ParseIPv6AndPrefix(os.Args[2])
-
-				if ipv6 != nil && prefix != 0 {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv6.String() + "/" + strconv.FormatUint(uint64(prefix), 10))
-
-					result = actions.ForbidNetwork(network)
-
-				}
-
-			} else if types.IsIPv6AndPort(os.Args[2]) {
-
-				ipv6, port := types.ParseIPv6AndPort(os.Args[2])
-
-				if ipv6 != nil && port != 0 {
-
-					connection := matchers.NewConnection()
-					connection.SetHost(ipv6.String())
-					connection.SetPort(port)
-
-					result = actions.ForbidConnection(connection)
-
-				}
-
-			} else if types.IsIPv6(os.Args[2]) {
-
-				ipv6 := types.ParseIPv6(os.Args[2])
-
-				if ipv6 != nil {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv6.String() + "/128")
-
-					result = actions.ForbidNetwork(network)
-
-				}
-
-			} else if types.IsIPv4AndPrefix(os.Args[2]) {
-
-				ipv4, prefix := types.ParseIPv4AndPrefix(os.Args[2])
-
-				if ipv4 != nil && prefix != 0 {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv4.String() + "/" + strconv.FormatUint(uint64(prefix), 10))
-
-					result = actions.ForbidNetwork(network)
-
-				}
-
-			} else if types.IsIPv4AndPort(os.Args[2]) {
-
-				ipv4, port := types.ParseIPv4AndPort(os.Args[2])
-
-				if ipv4 != nil && port != 0 {
-
-					connection := matchers.NewConnection()
-					connection.SetHost(ipv4.String())
-					connection.SetPort(port)
-
-					result = actions.ForbidConnection(connection)
-
-				}
-
-			} else if types.IsIPv4(os.Args[2]) {
-
-				ipv4 := types.ParseIPv4(os.Args[2])
-
-				if ipv4 != nil {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv4.String() + "/32")
-
-					result = actions.ForbidNetwork(network)
-
-				}
-
-			}
-
-			if result == true {
+			if actions.Forbid(os.Args[2]) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
 			}
 
-		} else if os.Args[1] == "permit" {
+		} else if os.Args[1] == "permit" && len(os.Args) == 3 {
 
-			result := false
-
-			if types.IsASN(os.Args[2]) {
-
-				asn := types.ParseASN(os.Args[2])
-
-				if asn != nil {
-
-					network := matchers.NewNetwork()
-					network.SetName(asn.String())
-
-					result = actions.PermitNetwork(network)
-
-				}
-
-			} else if types.IsIPv6AndPrefix(os.Args[2]) {
-
-				ipv6, prefix := types.ParseIPv6AndPrefix(os.Args[2])
-
-				if ipv6 != nil && prefix != 0 {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv6.String() + "/" + strconv.FormatUint(uint64(prefix), 10))
-
-					result = actions.PermitNetwork(network)
-
-				}
-
-			} else if types.IsIPv6AndPort(os.Args[2]) {
-
-				ipv6, port := types.ParseIPv6AndPort(os.Args[2])
-
-				if ipv6 != nil && port != 0 {
-
-					connection := matchers.NewConnection()
-					connection.SetHost(ipv6.String())
-					connection.SetPort(port)
-
-					result = actions.PermitConnection(connection)
-
-				}
-
-			} else if types.IsIPv6(os.Args[2]) {
-
-				ipv6 := types.ParseIPv6(os.Args[2])
-
-				if ipv6 != nil {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv6.String() + "/128")
-
-					result = actions.PermitNetwork(network)
-
-				}
-
-			} else if types.IsIPv4AndPrefix(os.Args[2]) {
-
-				ipv4, prefix := types.ParseIPv4AndPrefix(os.Args[2])
-
-				if ipv4 != nil && prefix != 0 {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv4.String() + "/" + strconv.FormatUint(uint64(prefix), 10))
-
-					result = actions.PermitNetwork(network)
-
-				}
-
-			} else if types.IsIPv4AndPort(os.Args[2]) {
-
-				ipv4, port := types.ParseIPv4AndPort(os.Args[2])
-
-				if ipv4 != nil && port != 0 {
-
-					connection := matchers.NewConnection()
-					connection.SetHost(ipv4.String())
-					connection.SetPort(port)
-
-					result = actions.PermitConnection(connection)
-
-				}
-
-			} else if types.IsIPv4(os.Args[2]) {
-
-				ipv4 := types.ParseIPv4(os.Args[2])
-
-				if ipv4 != nil {
-
-					network := matchers.NewNetwork()
-					network.SetSubnet(ipv4.String() + "/32")
-
-					result = actions.PermitNetwork(network)
-
-				}
-
+			if actions.Permit(os.Args[2]) == true {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
 			}
 
-			if result == true {
+		} else if os.Args[1] == "check" && len(os.Args) == 3 {
+
+			if ebpf.SUPPORTED == false {
+				console.Error("tholian-firewall: no eBPF backend available")
+				os.Exit(3)
+			}
+
+			if actions.Check(os.Args[2]) == true {
+				os.Exit(1)
+			} else {
+				os.Exit(0)
+			}
+
+		} else if os.Args[1] == "search" && len(os.Args) == 3 {
+
+			results := actions.Search(os.Args[2])
+
+			if len(results) > 0 {
+
+				for r := 0; r < len(results); r++ {
+					console.Log(results[r])
+				}
+
+				os.Exit(0)
+
+			} else {
+				os.Exit(1)
+			}
+
+		} else if os.Args[1] == "init" && len(os.Args) == 2 {
+
+			if actions.Init() == true {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
+
+		} else if os.Args[1] == "load" && len(os.Args) == 3 {
+
+			if actions.Load(os.Args[2]) == true {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
+
+		} else if os.Args[1] == "status" && len(os.Args) == 2 {
+
+			results := actions.Status()
+
+			for r := 0; r < len(results); r++ {
+				console.Log(results[r])
+			}
+
+			os.Exit(0)
+
+		} else if os.Args[1] == "selftest" && len(os.Args) == 2 {
+
+			if actions.SelfTest() == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
 			}
 
 		} else {
+
 			showUsage()
 			os.Exit(2)
+
 		}
 
 	} else {
