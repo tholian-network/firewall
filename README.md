@@ -176,7 +176,7 @@ CLI smoke test. See [docs/TESTING.md](docs/TESTING.md) for details.
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) documents the architecture, decisions,
   and the eBPF pitfalls (read this before changing the kernel module).
 - [TESTING.md](docs/TESTING.md) documents how to run and read the tests.
-- [TODO.md](TODO.md) documents the short-term task list.
+- [TODO.md](docs/TODO.md) documents the short-term task list.
 
 ## Limitations
 
