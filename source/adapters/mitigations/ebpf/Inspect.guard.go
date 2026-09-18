@@ -3,16 +3,17 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "encoding/binary"
 import "strconv"
 import "net"
 
-func ForbidAddress(address string) bool {
+func ForbidAddress(console *structs.Console, address string) bool {
 
 	if types.IsDomain(address) {
 
-		if module.ForbidAddress(address) == false {
+		if module.ForbidAddress(console, address) == false {
 			return false
 		}
 
@@ -20,7 +21,7 @@ func ForbidAddress(address string) bool {
 
 		if err == nil {
 			for r := 0; r < len(resolved); r++ {
-				module.ForbidAddress(resolved[r].String())
+				module.ForbidAddress(console, resolved[r].String())
 			}
 		}
 
@@ -28,20 +29,20 @@ func ForbidAddress(address string) bool {
 
 	}
 
-	return module.ForbidAddress(address)
+	return module.ForbidAddress(console, address)
 
 }
 
-func PermitAddress(address string) bool {
+func PermitAddress(console *structs.Console, address string) bool {
 
 	if types.IsDomain(address) {
 
-		result := module.PermitAddress(address)
+		result := module.PermitAddress(console, address)
 		resolved, err := net.LookupIP(address)
 
 		if err == nil {
 			for r := 0; r < len(resolved); r++ {
-				module.PermitAddress(resolved[r].String())
+				module.PermitAddress(console, resolved[r].String())
 			}
 		}
 
@@ -49,36 +50,36 @@ func PermitAddress(address string) bool {
 
 	}
 
-	return module.PermitAddress(address)
+	return module.PermitAddress(console, address)
 
 }
 
-func IsForbiddenAddress(address string) bool {
-	return module.IsForbiddenAddress(address)
+func IsForbiddenAddress(console *structs.Console, address string) bool {
+	return module.IsForbiddenAddress(console, address)
 }
 
-func ForbidSubnet(address string, prefix uint8) bool {
-	return module.ForbidSubnet(address, prefix)
+func ForbidSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return module.ForbidSubnet(console, address, prefix)
 }
 
-func PermitSubnet(address string, prefix uint8) bool {
-	return module.PermitSubnet(address, prefix)
+func PermitSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return module.PermitSubnet(console, address, prefix)
 }
 
-func IsForbiddenSubnet(address string, prefix uint8) bool {
-	return module.IsForbiddenSubnet(address, prefix)
+func IsForbiddenSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return module.IsForbiddenSubnet(console, address, prefix)
 }
 
-func ForbidPort(port uint16) bool {
-	return module.ForbidPort(port)
+func ForbidPort(console *structs.Console, port uint16) bool {
+	return module.ForbidPort(console, port)
 }
 
-func PermitPort(port uint16) bool {
-	return module.PermitPort(port)
+func PermitPort(console *structs.Console, port uint16) bool {
+	return module.PermitPort(console, port)
 }
 
-func IsForbiddenPort(port uint16) bool {
-	return module.IsForbiddenPort(port)
+func IsForbiddenPort(console *structs.Console, port uint16) bool {
+	return module.IsForbiddenPort(console, port)
 }
 
 func Status() []string {

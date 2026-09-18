@@ -1,8 +1,9 @@
 package iptables
 
 import "strconv"
+import "tholian-firewall/structs"
 
-func isForbiddenHostAndPort(chain string, address string, port uint16) bool {
+func isForbiddenHostAndPort(console *structs.Console, chain string, address string, port uint16) bool {
 
 	program, addr := resolveProgram(address)
 
@@ -14,15 +15,15 @@ func isForbiddenHostAndPort(chain string, address string, port uint16) bool {
 
 		sport := strconv.FormatUint(uint64(port), 10)
 
-		return ruleExists(program, "-C", "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
-			ruleExists(program, "-C", "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
+		return ruleExists(console, program, "-C", "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
+			ruleExists(console, program, "-C", "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
 
 	} else if chain == "OUTPUT" {
 
 		dport := strconv.FormatUint(uint64(port), 10)
 
-		return ruleExists(program, "-C", "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
-			ruleExists(program, "-C", "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
+		return ruleExists(console, program, "-C", "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
+			ruleExists(console, program, "-C", "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
 
 	}
 
@@ -30,7 +31,7 @@ func isForbiddenHostAndPort(chain string, address string, port uint16) bool {
 
 }
 
-func forbidHostAndPort(chain string, address string, port uint16) bool {
+func forbidHostAndPort(console *structs.Console, chain string, address string, port uint16) bool {
 
 	program, addr := resolveProgram(address)
 
@@ -42,15 +43,15 @@ func forbidHostAndPort(chain string, address string, port uint16) bool {
 
 		sport := strconv.FormatUint(uint64(port), 10)
 
-		return addRuleOnce(program, "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
-			addRuleOnce(program, "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
+		return addRuleOnce(console, program, "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
+			addRuleOnce(console, program, "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
 
 	} else if chain == "OUTPUT" {
 
 		dport := strconv.FormatUint(uint64(port), 10)
 
-		return addRuleOnce(program, "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
-			addRuleOnce(program, "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
+		return addRuleOnce(console, program, "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
+			addRuleOnce(console, program, "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
 
 	}
 
@@ -58,7 +59,7 @@ func forbidHostAndPort(chain string, address string, port uint16) bool {
 
 }
 
-func permitHostAndPort(chain string, address string, port uint16) bool {
+func permitHostAndPort(console *structs.Console, chain string, address string, port uint16) bool {
 
 	program, addr := resolveProgram(address)
 
@@ -70,15 +71,15 @@ func permitHostAndPort(chain string, address string, port uint16) bool {
 
 		sport := strconv.FormatUint(uint64(port), 10)
 
-		return deleteRuleOnce(program, "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
-			deleteRuleOnce(program, "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
+		return deleteRuleOnce(console, program, "INPUT", "-p", "udp", "-s", addr, "--sport", sport, "-j", "DROP") &&
+			deleteRuleOnce(console, program, "INPUT", "-p", "tcp", "-s", addr, "--sport", sport, "-j", "DROP")
 
 	} else if chain == "OUTPUT" {
 
 		dport := strconv.FormatUint(uint64(port), 10)
 
-		return deleteRuleOnce(program, "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
-			deleteRuleOnce(program, "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
+		return deleteRuleOnce(console, program, "OUTPUT", "-p", "udp", "-d", addr, "--dport", dport, "-j", "DROP") &&
+			deleteRuleOnce(console, program, "OUTPUT", "-p", "tcp", "-d", addr, "--dport", dport, "-j", "DROP")
 
 	}
 

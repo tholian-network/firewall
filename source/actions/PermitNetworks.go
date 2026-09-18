@@ -1,12 +1,11 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/insights"
 import "tholian-firewall/matchers"
-import "tholian-firewall/structs"
 import "strconv"
 
-func PermitNetworks(searches []matchers.Network) bool {
+func PermitNetworks(console *structs.Console, searches []matchers.Network) bool {
 
 	var result bool = false
 
@@ -27,7 +26,7 @@ func PermitNetworks(searches []matchers.Network) bool {
 
 				total = total + 1
 
-				if permitNetwork(network) == true {
+				if permitNetwork(console, network) == true {
 					succeeded = succeeded + 1
 				}
 
@@ -41,7 +40,7 @@ func PermitNetworks(searches []matchers.Network) bool {
 
 				total = total + 1
 
-				if permitSubnetOrAddress(subnet) == true {
+				if permitSubnetOrAddress(console, subnet) == true {
 					succeeded = succeeded + 1
 				}
 

@@ -22,8 +22,8 @@
 ## Future Work
 
 - [ ] Daemon / IPC mode so a long-running firewall can be controlled by the CLI
-- [ ] Structured logging persisted to disk. The `console.Messages` pipeline is
-  already there, it just needs a writer
+- [ ] Structured logging persisted to disk. The `structs.Console.Messages`
+  pipeline is already there, it just needs a writer
 - [ ] TC/clsact egress program for outbound (`client`/`OUTPUT`) enforcement
 - [ ] Map and link pinning and persistence so bans and attachment survive
   restarts and work across CLI invocations

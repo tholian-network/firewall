@@ -2,9 +2,12 @@ package iptables
 
 import "testing"
 import "os"
+import "tholian-firewall/structs"
 import "path/filepath"
 import "strconv"
 import "strings"
+
+var test_console = structs.NewConsole(nil, nil, 0)
 
 func fakeIptables(t *testing.T, logPath string, checkExit int) string {
 
@@ -81,7 +84,7 @@ func TestForbidAddressIPv4(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "commands.log")
 	configureIptables(fakeIptables(t, logPath, 1))
 
-	if ForbidAddress("1.3.3.7") == false {
+	if ForbidAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("ForbidAddress returned false")
 	}
 
@@ -103,11 +106,11 @@ func TestIsForbiddenAddress(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "commands.log")
 	configureIptables(fakeIptables(t, logPath, 0))
 
-	if IsForbiddenAddress("1.3.3.7") == false {
+	if IsForbiddenAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("IsForbiddenAddress returned false")
 	}
 
-	if PermitAddress("1.3.3.7") == false {
+	if PermitAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("PermitAddress returned false")
 	}
 
@@ -122,7 +125,7 @@ func TestForbidAddressIPv6Unsupported(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "commands.log")
 	configureIptables(fakeIptables(t, logPath, 1))
 
-	if ForbidAddress("[fe80::1337]") == true {
+	if ForbidAddress(test_console, "[fe80::1337]") == true {
 		t.Fatal("ForbidAddress returned true without ip6tables support")
 	}
 
@@ -137,7 +140,7 @@ func TestForbidPortUsesFamilies(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "commands.log")
 	configureIptables(fakeIptables(t, logPath, 1))
 
-	if ForbidPort(1338) == false {
+	if ForbidPort(test_console, 1338) == false {
 		t.Fatal("ForbidPort returned false")
 	}
 
@@ -161,7 +164,7 @@ func TestIsForbiddenPort(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "commands.log")
 	configureIptables(fakeIptables(t, logPath, 0))
 
-	if IsForbiddenPort(1338) == false {
+	if IsForbiddenPort(test_console, 1338) == false {
 		t.Fatal("IsForbiddenPort returned false")
 	}
 
@@ -180,7 +183,7 @@ func TestForbidAddressFailure(t *testing.T) {
 
 	configureIptables(path)
 
-	if ForbidAddress("1.3.3.7") == true {
+	if ForbidAddress(test_console, "1.3.3.7") == true {
 		t.Fatal("ForbidAddress returned true despite a failing program")
 	}
 

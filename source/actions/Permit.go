@@ -1,15 +1,17 @@
 package actions
 
-func Permit(target string) bool {
+import "tholian-firewall/structs"
+
+func Permit(console *structs.Console, target string) bool {
 
 	parsed := ParseTarget(target)
 
 	if parsed.Kind == "network" {
-		return PermitNetwork(parsed.Network)
+		return PermitNetwork(console, parsed.Network)
 	} else if parsed.Kind == "connection" {
-		return PermitConnection(parsed.Connection)
+		return PermitConnection(console, parsed.Connection)
 	} else if parsed.Kind == "domain" {
-		return permitDomain(parsed.Domain)
+		return permitDomain(console, parsed.Domain)
 	}
 
 	return false

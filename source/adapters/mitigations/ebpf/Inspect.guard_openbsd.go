@@ -2,43 +2,45 @@
 
 package ebpf
 
-func ForbidAddress(address string) bool {
+import "tholian-firewall/structs"
+
+func ForbidAddress(console *structs.Console, address string) bool {
 	return false
 }
 
-func PermitAddress(address string) bool {
+func PermitAddress(console *structs.Console, address string) bool {
 	return false
 }
 
-func IsForbiddenAddress(address string) bool {
+func IsForbiddenAddress(console *structs.Console, address string) bool {
 	return false
 }
 
-func ForbidSubnet(address string, prefix uint8) bool {
+func ForbidSubnet(console *structs.Console, address string, prefix uint8) bool {
 	return false
 }
 
-func PermitSubnet(address string, prefix uint8) bool {
+func PermitSubnet(console *structs.Console, address string, prefix uint8) bool {
 	return false
 }
 
-func IsForbiddenSubnet(address string, prefix uint8) bool {
+func IsForbiddenSubnet(console *structs.Console, address string, prefix uint8) bool {
 	return false
 }
 
-func ForbidPort(port uint16) bool {
+func ForbidPort(console *structs.Console, port uint16) bool {
 	return false
 }
 
-func PermitPort(port uint16) bool {
+func PermitPort(console *structs.Console, port uint16) bool {
 	return false
 }
 
-func IsForbiddenPort(port uint16) bool {
+func IsForbiddenPort(console *structs.Console, port uint16) bool {
 	return false
 }
 
-func AttachAll() int {
+func AttachAll(console *structs.Console) int {
 	return 0
 }
 

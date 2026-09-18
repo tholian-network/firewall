@@ -10,6 +10,7 @@ import "net"
 
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
+import "tholian-firewall/structs"
 
 const (
 	xdpAborted  = 0
@@ -18,6 +19,16 @@ const (
 	xdpTx       = 3
 	xdpRedirect = 4
 )
+
+var test_console = structs.NewConsole(os.Stdout, os.Stderr, 0)
+
+func TestMain(m *testing.M) {
+
+	ebpf.Init(test_console)
+
+	os.Exit(m.Run())
+
+}
 
 func dnsResponsePacket(domain string, address [4]byte) []byte {
 
@@ -152,19 +163,19 @@ func TestAddressRoundTrip(t *testing.T) {
 
 	requireModule(t)
 
-	if ebpf.ForbidAddress("1.3.3.7") == false {
+	if ebpf.ForbidAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("ForbidAddress failed")
 	}
 
-	if ebpf.IsForbiddenAddress("1.3.3.7") == false {
+	if ebpf.IsForbiddenAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("IsForbiddenAddress returned false after forbid")
 	}
 
-	if ebpf.PermitAddress("1.3.3.7") == false {
+	if ebpf.PermitAddress(test_console, "1.3.3.7") == false {
 		t.Fatal("PermitAddress failed")
 	}
 
-	if ebpf.IsForbiddenAddress("1.3.3.7") == true {
+	if ebpf.IsForbiddenAddress(test_console, "1.3.3.7") == true {
 		t.Fatal("IsForbiddenAddress returned true after permit")
 	}
 
@@ -174,19 +185,19 @@ func TestIPv6AddressRoundTrip(t *testing.T) {
 
 	requireModule(t)
 
-	if ebpf.ForbidAddress("[fe80::1337]") == false {
+	if ebpf.ForbidAddress(test_console, "[fe80::1337]") == false {
 		t.Fatal("ForbidAddress failed for IPv6")
 	}
 
-	if ebpf.IsForbiddenAddress("[fe80::1337]") == false {
+	if ebpf.IsForbiddenAddress(test_console, "[fe80::1337]") == false {
 		t.Fatal("IsForbiddenAddress returned false after IPv6 forbid")
 	}
 
-	if ebpf.PermitAddress("[fe80::1337]") == false {
+	if ebpf.PermitAddress(test_console, "[fe80::1337]") == false {
 		t.Fatal("PermitAddress failed for IPv6")
 	}
 
-	if ebpf.IsForbiddenAddress("[fe80::1337]") == true {
+	if ebpf.IsForbiddenAddress(test_console, "[fe80::1337]") == true {
 		t.Fatal("IsForbiddenAddress returned true after IPv6 permit")
 	}
 
@@ -196,19 +207,19 @@ func TestSubnetRoundTrip(t *testing.T) {
 
 	requireModule(t)
 
-	if ebpf.ForbidSubnet("1.3.3.0", 24) == false {
+	if ebpf.ForbidSubnet(test_console, "1.3.3.0", 24) == false {
 		t.Fatal("ForbidSubnet failed")
 	}
 
-	if ebpf.IsForbiddenSubnet("1.3.3.7", 32) == false {
+	if ebpf.IsForbiddenSubnet(test_console, "1.3.3.7", 32) == false {
 		t.Fatal("IsForbiddenSubnet returned false for a covered address")
 	}
 
-	if ebpf.PermitSubnet("1.3.3.0", 24) == false {
+	if ebpf.PermitSubnet(test_console, "1.3.3.0", 24) == false {
 		t.Fatal("PermitSubnet failed")
 	}
 
-	if ebpf.IsForbiddenSubnet("1.3.3.7", 32) == true {
+	if ebpf.IsForbiddenSubnet(test_console, "1.3.3.7", 32) == true {
 		t.Fatal("IsForbiddenSubnet returned true after permit")
 	}
 
@@ -218,19 +229,19 @@ func TestPortRoundTrip(t *testing.T) {
 
 	requireModule(t)
 
-	if ebpf.ForbidPort(1338) == false {
+	if ebpf.ForbidPort(test_console, 1338) == false {
 		t.Fatal("ForbidPort failed")
 	}
 
-	if ebpf.IsForbiddenPort(1338) == false {
+	if ebpf.IsForbiddenPort(test_console, 1338) == false {
 		t.Fatal("IsForbiddenPort returned false after forbid")
 	}
 
-	if ebpf.PermitPort(1338) == false {
+	if ebpf.PermitPort(test_console, 1338) == false {
 		t.Fatal("PermitPort failed")
 	}
 
-	if ebpf.IsForbiddenPort(1338) == true {
+	if ebpf.IsForbiddenPort(test_console, 1338) == true {
 		t.Fatal("IsForbiddenPort returned true after permit")
 	}
 
@@ -240,23 +251,23 @@ func TestDomainRoundTrip(t *testing.T) {
 
 	requireModule(t)
 
-	if ebpf.ForbidAddress("evil.example") == false {
+	if ebpf.ForbidAddress(test_console, "evil.example") == false {
 		t.Fatal("ForbidAddress failed for a domain")
 	}
 
-	if ebpf.IsForbiddenAddress("evil.example") == false {
+	if ebpf.IsForbiddenAddress(test_console, "evil.example") == false {
 		t.Fatal("IsForbiddenAddress returned false after domain forbid")
 	}
 
-	if ebpf.IsForbiddenAddress("EVIL.EXAMPLE") == false {
+	if ebpf.IsForbiddenAddress(test_console, "EVIL.EXAMPLE") == false {
 		t.Fatal("domain matching is not case-insensitive")
 	}
 
-	if ebpf.PermitAddress("evil.example") == false {
+	if ebpf.PermitAddress(test_console, "evil.example") == false {
 		t.Fatal("PermitAddress failed for a domain")
 	}
 
-	if ebpf.IsForbiddenAddress("evil.example") == true {
+	if ebpf.IsForbiddenAddress(test_console, "evil.example") == true {
 		t.Fatal("IsForbiddenAddress returned true after domain permit")
 	}
 
@@ -270,13 +281,13 @@ func TestAttachAll(t *testing.T) {
 		t.Skip("set THOLIAN_TEST_ATTACH=1 to attach XDP to all interfaces")
 	}
 
-	attached := ebpf.AttachAll()
+	attached := ebpf.AttachAll(test_console)
 
 	if attached == 0 {
 		t.Fatal("AttachAll attached to zero interfaces")
 	}
 
-	ebpf.DetachAll()
+	ebpf.DetachAll(test_console)
 
 }
 
@@ -284,9 +295,9 @@ func TestDNSDrop(t *testing.T) {
 
 	requireModule(t)
 
-	ebpf.PermitAddress("evil.invalid")
+	ebpf.PermitAddress(test_console, "evil.invalid")
 
-	if ebpf.ForbidAddress("evil.invalid") == false {
+	if ebpf.ForbidAddress(test_console, "evil.invalid") == false {
 		t.Fatal("ForbidAddress failed for the domain")
 	}
 
@@ -302,7 +313,7 @@ func TestDNSDrop(t *testing.T) {
 		t.Errorf("program returned %d, expected XDP_DROP (%d)", code, xdpDrop)
 	}
 
-	ebpf.PermitAddress("evil.invalid")
+	ebpf.PermitAddress(test_console, "evil.invalid")
 
 }
 
@@ -310,13 +321,13 @@ func TestDomainResolutionInstall(t *testing.T) {
 
 	requireModule(t)
 
-	ebpf.PermitAddress("example.com")
+	ebpf.PermitAddress(test_console, "example.com")
 
-	if ebpf.ForbidAddress("example.com") == false {
+	if ebpf.ForbidAddress(test_console, "example.com") == false {
 		t.Fatal("ForbidAddress failed for the domain")
 	}
 
-	if ebpf.IsForbiddenAddress("example.com") == false {
+	if ebpf.IsForbiddenAddress(test_console, "example.com") == false {
 		t.Fatal("domain was not installed into domain_bans")
 	}
 
@@ -334,7 +345,7 @@ func TestDomainResolutionInstall(t *testing.T) {
 
 	for r := 0; r < len(resolved); r++ {
 
-		if ebpf.IsForbiddenAddress(resolved[r].String()) {
+		if ebpf.IsForbiddenAddress(test_console, resolved[r].String()) {
 			installed = installed + 1
 		}
 
@@ -344,6 +355,6 @@ func TestDomainResolutionInstall(t *testing.T) {
 		t.Fatal("no resolved A/AAAA address was installed into the ban maps")
 	}
 
-	ebpf.PermitAddress("example.com")
+	ebpf.PermitAddress(test_console, "example.com")
 
 }

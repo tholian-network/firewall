@@ -1,8 +1,8 @@
 package hosts
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 
-func ForbidDomain(domain string) bool {
+func ForbidDomain(console *structs.Console, domain string) bool {
 
 	if SUPPORTED == false {
 		return false
@@ -25,6 +25,6 @@ func ForbidDomain(domain string) bool {
 
 	Hosts[domain] = []string{sinkIPv4, sinkIPv6}
 
-	return saveHosts()
+	return saveHosts(console)
 
 }

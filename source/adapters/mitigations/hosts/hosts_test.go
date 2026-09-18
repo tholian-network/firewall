@@ -2,8 +2,11 @@ package hosts
 
 import "testing"
 import "os"
+import "tholian-firewall/structs"
 import "path/filepath"
 import "strings"
+
+var test_console = structs.NewConsole(nil, nil, 0)
 
 func setupHosts(t *testing.T, content string) string {
 
@@ -31,11 +34,11 @@ func TestManagedBlockRoundTrip(t *testing.T) {
 	content := "127.0.0.1 localhost\n\n# a comment\n10.0.0.1 router\n\n"
 	path := setupHosts(t, content)
 
-	if ForbidDomain("evil.example") == false {
+	if ForbidDomain(test_console, "evil.example") == false {
 		t.Fatal("ForbidDomain returned false")
 	}
 
-	if IsForbiddenDomain("EVIL.EXAMPLE") == false {
+	if IsForbiddenDomain(test_console, "EVIL.EXAMPLE") == false {
 		t.Fatal("domain matching is not case-insensitive")
 	}
 
@@ -63,11 +66,11 @@ func TestManagedBlockRoundTrip(t *testing.T) {
 
 	}
 
-	if PermitDomain("evil.example") == false {
+	if PermitDomain(test_console, "evil.example") == false {
 		t.Fatal("PermitDomain returned false")
 	}
 
-	if IsForbiddenDomain("evil.example") == true {
+	if IsForbiddenDomain(test_console, "evil.example") == true {
 		t.Fatal("domain still forbidden after permit")
 	}
 
@@ -97,11 +100,11 @@ func TestForbidDomainIsIdempotent(t *testing.T) {
 
 	path := setupHosts(t, "127.0.0.1 localhost\n")
 
-	if ForbidDomain("evil.example") == false {
+	if ForbidDomain(test_console, "evil.example") == false {
 		t.Fatal("ForbidDomain returned false")
 	}
 
-	if ForbidDomain("evil.example") == false {
+	if ForbidDomain(test_console, "evil.example") == false {
 		t.Fatal("second ForbidDomain returned false")
 	}
 

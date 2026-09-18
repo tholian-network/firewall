@@ -1,8 +1,5 @@
 package console
 
-import "encoding/json"
-import "fmt"
-import "reflect"
 import "strings"
 
 var palette map[string]string = map[string]string{
@@ -39,19 +36,7 @@ func isNumber(chunk string) bool {
 
 }
 
-func toType(instance any) string {
-
-	typ := reflect.TypeOf(instance)
-
-	if typ.Kind() == reflect.Ptr {
-		return "*" + typ.Elem().Name()
-	} else {
-		return typ.Name()
-	}
-
-}
-
-func highlight(line string) string {
+func Highlight(line string) string {
 
 	var result string
 	var suffix string
@@ -119,37 +104,5 @@ func highlight(line string) string {
 	}
 
 	return prefix + result + suffix
-
-}
-
-func Inspect(instance any) {
-
-	offset := toOffset()
-
-	buffer, err := json.MarshalIndent(instance, "", "\t")
-
-	if err == nil {
-
-		var typ = toType(instance)
-
-		fmt.Println("\u001b[40m" + offset + " Inspect(" + typ + "):\u001b[K")
-
-		var message = sanitize(string(buffer))
-
-		Messages = append(Messages, NewMessage("Log", message))
-
-		var lines = strings.Split(message, "\n")
-
-		if len(lines) > 0 {
-
-			for l := 0; l < len(lines); l++ {
-				fmt.Println("\u001b[40m" + offset + " " + highlight(lines[l]) + "\u001b[K")
-			}
-
-			fmt.Print("\u001b[0m")
-
-		}
-
-	}
 
 }

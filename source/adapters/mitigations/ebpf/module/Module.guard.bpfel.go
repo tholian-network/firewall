@@ -5,13 +5,13 @@ package module
 import "github.com/cilium/ebpf"
 import "github.com/cilium/ebpf/link"
 import "github.com/cilium/ebpf/rlimit"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "errors"
 import "strings"
 import "bytes"
 import _ "embed"
 
-func reportError(err error) {
+func reportError(console *structs.Console, err error) {
 
 	var verifier *ebpf.VerifierError
 
@@ -61,7 +61,7 @@ func probe() bool {
 
 }
 
-func init() {
+func Init(console *structs.Console) {
 
 	Links = make(map[string]*link.Link)
 
@@ -77,7 +77,7 @@ func init() {
 	if err1 != nil {
 
 		LoadError = err1
-		reportError(err1)
+		reportError(console, err1)
 		console.Error("adapters/ebpf: eBPF Module disabled")
 
 		return
@@ -89,7 +89,7 @@ func init() {
 	if err2 != nil {
 
 		LoadError = err2
-		reportError(err2)
+		reportError(console, err2)
 		console.Error("adapters/ebpf: eBPF Module disabled")
 
 		return

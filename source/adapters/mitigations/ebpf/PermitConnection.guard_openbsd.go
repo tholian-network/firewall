@@ -2,9 +2,10 @@
 
 package ebpf
 
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 
-func PermitConnection(connection types.Connection) bool {
+func PermitConnection(console *structs.Console, connection types.Connection) bool {
 
 	var result bool = false
 

@@ -2,9 +2,10 @@ package module
 
 import "github.com/cilium/ebpf"
 import "tholian-firewall/types"
+import "tholian-firewall/structs"
 import "errors"
 
-func PermitSubnet(address string, prefix uint8) bool {
+func PermitSubnet(console *structs.Console, address string, prefix uint8) bool {
 
 	var result bool = false
 

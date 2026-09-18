@@ -1,10 +1,11 @@
 package actions
 
 import "tholian-firewall/insights"
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "strconv"
 
-func Search(target string) []string {
+func Search(console *structs.Console, target string) []string {
 
 	var result []string
 

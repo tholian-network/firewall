@@ -4,6 +4,6 @@ package ebpf
 
 import "tholian-firewall/structs"
 
-func PermitNetwork(network structs.Network) bool {
+func PermitNetwork(console *structs.Console, network structs.Network) bool {
 	return false
 }

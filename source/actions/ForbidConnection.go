@@ -1,10 +1,10 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
 import "tholian-firewall/types"
 
-func ForbidConnection(search matchers.Connection) bool {
+func ForbidConnection(console *structs.Console, search matchers.Connection) bool {
 
 	var result bool = false
 
@@ -12,14 +12,14 @@ func ForbidConnection(search matchers.Connection) bool {
 
 	if types.IsDomain(search.Socket.Host) == true {
 
-		result = forbidDomain(search.Socket.Host)
+		result = forbidDomain(console, search.Socket.Host)
 
 	} else {
 
 		connection := buildConnection(search)
 
 		if connection.IsValid() == true {
-			result = forbidConnection(connection)
+			result = forbidConnection(console, connection)
 		}
 
 	}

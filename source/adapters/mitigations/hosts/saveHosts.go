@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "path/filepath"
 import "strings"
 import "sort"
@@ -62,7 +62,7 @@ func renderHosts(content string, domains []string) string {
 
 }
 
-func writeHosts(buffer []byte) bool {
+func writeHosts(console *structs.Console, buffer []byte) bool {
 
 	mode := os.FileMode(0644)
 
@@ -130,7 +130,7 @@ func writeHosts(buffer []byte) bool {
 
 }
 
-func saveHosts() bool {
+func saveHosts(console *structs.Console) bool {
 
 	var content string
 
@@ -152,6 +152,6 @@ func saveHosts() bool {
 
 	sort.Strings(domains)
 
-	return writeHosts([]byte(renderHosts(content, domains)))
+	return writeHosts(console, []byte(renderHosts(content, domains)))
 
 }

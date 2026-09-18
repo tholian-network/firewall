@@ -10,16 +10,16 @@ func backendAvailable() bool {
 	return ebpf.SUPPORTED == true || iptables.SUPPORTED == true || hosts.SUPPORTED == true
 }
 
-func forbidAddress(address string) bool {
+func forbidAddress(console *structs.Console, address string) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidAddress(address)
+		return ebpf.ForbidAddress(console, address)
 	}
 
 	if types.IsDomain(address) == true {
 
 		if hosts.SUPPORTED == true {
-			return hosts.ForbidDomain(address)
+			return hosts.ForbidDomain(console, address)
 		}
 
 		return false
@@ -27,23 +27,23 @@ func forbidAddress(address string) bool {
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.ForbidAddress(address)
+		return iptables.ForbidAddress(console, address)
 	}
 
 	return false
 
 }
 
-func permitAddress(address string) bool {
+func permitAddress(console *structs.Console, address string) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitAddress(address)
+		return ebpf.PermitAddress(console, address)
 	}
 
 	if types.IsDomain(address) == true {
 
 		if hosts.SUPPORTED == true {
-			return hosts.PermitDomain(address)
+			return hosts.PermitDomain(console, address)
 		}
 
 		return false
@@ -51,205 +51,205 @@ func permitAddress(address string) bool {
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.PermitAddress(address)
+		return iptables.PermitAddress(console, address)
 	}
 
 	return false
 
 }
 
-func isForbiddenAddress(address string) bool {
+func isForbiddenAddress(console *structs.Console, address string) bool {
 
-	if ebpf.SUPPORTED == true && ebpf.IsForbiddenAddress(address) == true {
+	if ebpf.SUPPORTED == true && ebpf.IsForbiddenAddress(console, address) == true {
 		return true
 	}
 
 	if types.IsDomain(address) == true {
-		return hosts.SUPPORTED == true && hosts.IsForbiddenDomain(address) == true
+		return hosts.SUPPORTED == true && hosts.IsForbiddenDomain(console, address) == true
 	}
 
-	return iptables.SUPPORTED == true && iptables.IsForbiddenAddress(address) == true
+	return iptables.SUPPORTED == true && iptables.IsForbiddenAddress(console, address) == true
 
 }
 
-func forbidDomain(domain string) bool {
+func forbidDomain(console *structs.Console, domain string) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidAddress(domain)
+		return ebpf.ForbidAddress(console, domain)
 	}
 
 	if hosts.SUPPORTED == true {
-		return hosts.ForbidDomain(domain)
+		return hosts.ForbidDomain(console, domain)
 	}
 
 	return false
 
 }
 
-func permitDomain(domain string) bool {
+func permitDomain(console *structs.Console, domain string) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitAddress(domain)
+		return ebpf.PermitAddress(console, domain)
 	}
 
 	if hosts.SUPPORTED == true {
-		return hosts.PermitDomain(domain)
+		return hosts.PermitDomain(console, domain)
 	}
 
 	return false
 
 }
 
-func isForbiddenDomain(domain string) bool {
+func isForbiddenDomain(console *structs.Console, domain string) bool {
 
-	if ebpf.SUPPORTED == true && ebpf.IsForbiddenAddress(domain) == true {
+	if ebpf.SUPPORTED == true && ebpf.IsForbiddenAddress(console, domain) == true {
 		return true
 	}
 
-	return hosts.SUPPORTED == true && hosts.IsForbiddenDomain(domain) == true
+	return hosts.SUPPORTED == true && hosts.IsForbiddenDomain(console, domain) == true
 
 }
 
-func forbidSubnet(address string, prefix uint8) bool {
+func forbidSubnet(console *structs.Console, address string, prefix uint8) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidSubnet(address, prefix)
+		return ebpf.ForbidSubnet(console, address, prefix)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.ForbidSubnet(address, prefix)
+		return iptables.ForbidSubnet(console, address, prefix)
 	}
 
 	return false
 
 }
 
-func permitSubnet(address string, prefix uint8) bool {
+func permitSubnet(console *structs.Console, address string, prefix uint8) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitSubnet(address, prefix)
+		return ebpf.PermitSubnet(console, address, prefix)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.PermitSubnet(address, prefix)
+		return iptables.PermitSubnet(console, address, prefix)
 	}
 
 	return false
 
 }
 
-func isForbiddenSubnet(address string, prefix uint8) bool {
+func isForbiddenSubnet(console *structs.Console, address string, prefix uint8) bool {
 
-	if ebpf.SUPPORTED == true && ebpf.IsForbiddenSubnet(address, prefix) == true {
+	if ebpf.SUPPORTED == true && ebpf.IsForbiddenSubnet(console, address, prefix) == true {
 		return true
 	}
 
-	return iptables.SUPPORTED == true && iptables.IsForbiddenSubnet(address, prefix) == true
+	return iptables.SUPPORTED == true && iptables.IsForbiddenSubnet(console, address, prefix) == true
 
 }
 
-func isForbiddenSubnetOrAddress(subnet structs.Subnet) bool {
+func isForbiddenSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
 	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return isForbiddenAddress(subnet.Address)
+		return isForbiddenAddress(console, subnet.Address)
 	}
 
 	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
-		return isForbiddenAddress(subnet.Address)
+		return isForbiddenAddress(console, subnet.Address)
 	}
 
-	return isForbiddenSubnet(subnet.Address, subnet.Prefix)
+	return isForbiddenSubnet(console, subnet.Address, subnet.Prefix)
 
 }
 
-func forbidSubnetOrAddress(subnet structs.Subnet) bool {
+func forbidSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
 	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return forbidAddress(subnet.Address)
+		return forbidAddress(console, subnet.Address)
 	}
 
 	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
-		return forbidAddress(subnet.Address)
+		return forbidAddress(console, subnet.Address)
 	}
 
-	return forbidSubnet(subnet.Address, subnet.Prefix)
+	return forbidSubnet(console, subnet.Address, subnet.Prefix)
 
 }
 
-func permitSubnetOrAddress(subnet structs.Subnet) bool {
+func permitSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
 	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return permitAddress(subnet.Address)
+		return permitAddress(console, subnet.Address)
 	}
 
 	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
-		return permitAddress(subnet.Address)
+		return permitAddress(console, subnet.Address)
 	}
 
-	return permitSubnet(subnet.Address, subnet.Prefix)
+	return permitSubnet(console, subnet.Address, subnet.Prefix)
 
 }
 
-func forbidPort(port uint16) bool {
+func forbidPort(console *structs.Console, port uint16) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidPort(port)
+		return ebpf.ForbidPort(console, port)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.ForbidPort(port)
+		return iptables.ForbidPort(console, port)
 	}
 
 	return false
 
 }
 
-func permitPort(port uint16) bool {
+func permitPort(console *structs.Console, port uint16) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitPort(port)
+		return ebpf.PermitPort(console, port)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.PermitPort(port)
+		return iptables.PermitPort(console, port)
 	}
 
 	return false
 
 }
 
-func isForbiddenPort(port uint16) bool {
+func isForbiddenPort(console *structs.Console, port uint16) bool {
 
-	if ebpf.SUPPORTED == true && ebpf.IsForbiddenPort(port) == true {
+	if ebpf.SUPPORTED == true && ebpf.IsForbiddenPort(console, port) == true {
 		return true
 	}
 
-	return iptables.SUPPORTED == true && iptables.IsForbiddenPort(port) == true
+	return iptables.SUPPORTED == true && iptables.IsForbiddenPort(console, port) == true
 
 }
 
-func forbidNetwork(network structs.Network) bool {
+func forbidNetwork(console *structs.Console, network structs.Network) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidNetwork(network)
+		return ebpf.ForbidNetwork(console, network)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.ForbidNetwork(network)
+		return iptables.ForbidNetwork(console, network)
 	}
 
 	return false
 
 }
 
-func permitNetwork(network structs.Network) bool {
+func permitNetwork(console *structs.Console, network structs.Network) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitNetwork(network)
+		return ebpf.PermitNetwork(console, network)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.PermitNetwork(network)
+		return iptables.PermitNetwork(console, network)
 	}
 
 	return false
@@ -270,28 +270,28 @@ func connectionHost(connection types.Connection) string {
 
 }
 
-func forbidConnection(connection types.Connection) bool {
+func forbidConnection(console *structs.Console, connection types.Connection) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.ForbidConnection(connection)
+		return ebpf.ForbidConnection(console, connection)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.ForbidConnection(connection)
+		return iptables.ForbidConnection(console, connection)
 	}
 
 	return false
 
 }
 
-func permitConnection(connection types.Connection) bool {
+func permitConnection(console *structs.Console, connection types.Connection) bool {
 
 	if ebpf.SUPPORTED == true {
-		return ebpf.PermitConnection(connection)
+		return ebpf.PermitConnection(console, connection)
 	}
 
 	if iptables.SUPPORTED == true {
-		return iptables.PermitConnection(connection)
+		return iptables.PermitConnection(console, connection)
 	}
 
 	return false

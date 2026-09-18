@@ -1,5 +1,7 @@
 package hosts
 
+import "tholian-firewall/structs"
+
 func isForbiddenDomain(domain string) bool {
 
 	var result bool = false
@@ -23,7 +25,7 @@ func isForbiddenDomain(domain string) bool {
 
 }
 
-func IsForbiddenDomain(domain string) bool {
+func IsForbiddenDomain(console *structs.Console, domain string) bool {
 
 	domain = normalizeDomain(domain)
 

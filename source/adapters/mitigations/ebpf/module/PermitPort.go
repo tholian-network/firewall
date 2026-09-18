@@ -2,8 +2,9 @@ package module
 
 import "github.com/cilium/ebpf"
 import "errors"
+import "tholian-firewall/structs"
 
-func PermitPort(port uint16) bool {
+func PermitPort(console *structs.Console, port uint16) bool {
 
 	var result bool = false
 

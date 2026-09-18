@@ -37,10 +37,10 @@ source/                        Go user space
       module/                  Map helpers + embedded bytecode
     iptables/                  iptables/ip6tables fallback
     hosts/                     /etc/hosts fallback (domains)
-  console/                     Colored output + message log
   insights/                    Embedded "map of the internet" (ASN/subnet data)
   matchers/                    Parsed user input (Network/Connection/Subnet)
-  structs/                     Rich models (Internet/Network/Subnet)
+  structs/                     Rich models (Internet/Network/Subnet) and the
+                               stateful Console/ConsoleMessage log
   types/                       Primitive types (IPv4/IPv6/Domain/ASN/...)
   tests/                       Integration tests compiled with `go test -c`
   utils/                       Kernel capability detection

@@ -1,11 +1,11 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
 import "tholian-firewall/types"
 import "strconv"
 
-func ForbidConnections(searches []matchers.Connection) bool {
+func ForbidConnections(console *structs.Console, searches []matchers.Connection) bool {
 
 	var result bool = false
 
@@ -22,7 +22,7 @@ func ForbidConnections(searches []matchers.Connection) bool {
 
 			total = total + 1
 
-			if forbidDomain(search.Socket.Host) == true {
+			if forbidDomain(console, search.Socket.Host) == true {
 				succeeded = succeeded + 1
 			}
 
@@ -34,7 +34,7 @@ func ForbidConnections(searches []matchers.Connection) bool {
 
 				total = total + 1
 
-				if forbidConnection(connection) == true {
+				if forbidConnection(console, connection) == true {
 					succeeded = succeeded + 1
 				}
 

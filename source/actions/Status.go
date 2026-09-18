@@ -3,8 +3,9 @@ package actions
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/hosts"
 import "tholian-firewall/adapters/mitigations/iptables"
+import "tholian-firewall/structs"
 
-func Status() []string {
+func Status(console *structs.Console) []string {
 
 	var result []string
 

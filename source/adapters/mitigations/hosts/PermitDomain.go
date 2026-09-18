@@ -1,8 +1,8 @@
 package hosts
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 
-func PermitDomain(domain string) bool {
+func PermitDomain(console *structs.Console, domain string) bool {
 
 	if SUPPORTED == false {
 		return false
@@ -41,6 +41,6 @@ func PermitDomain(domain string) bool {
 		delete(Hosts, domain)
 	}
 
-	return saveHosts()
+	return saveHosts(console)
 
 }

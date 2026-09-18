@@ -1,10 +1,9 @@
 package iptables
 
-import "tholian-firewall/console"
 import "tholian-firewall/structs"
 import "strconv"
 
-func ForbidNetwork(network structs.Network) bool {
+func ForbidNetwork(console *structs.Console, network structs.Network) bool {
 
 	var result bool = false
 
@@ -20,13 +19,13 @@ func ForbidNetwork(network structs.Network) bool {
 
 			for c := 0; c < len(chains); c++ {
 
-				if isForbiddenSubnet(chains[c], subnet.Address, subnet.Prefix) == true {
+				if isForbiddenSubnet(console, chains[c], subnet.Address, subnet.Prefix) == true {
 					continue
 				}
 
 				console.Warn("adapters/iptables: Forbid Network \"" + chains[c] + " " + subnet.Address + "/" + strconv.FormatUint(uint64(subnet.Prefix), 10) + "\"")
 
-				if forbidSubnet(chains[c], subnet.Address, subnet.Prefix) == false {
+				if forbidSubnet(console, chains[c], subnet.Address, subnet.Prefix) == false {
 					result = false
 				}
 

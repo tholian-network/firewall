@@ -132,26 +132,38 @@ sudo tholian-firewall load rules.txt;
 
 ## Embedding in a Go backend
 
-Tholian is a library first. Call `actions.Init()` once at startup to load the
-eBPF module and attach it to the interfaces, then drive it from your own code:
+Tholian is a library first. Create a `structs.Console` for output, call
+`ebpf.Init(console)` / `insights.Init(console)` to load the backends, then call
+`actions.Init(console)` once at startup to attach to the interfaces and drive it
+from your own code. The console is passed to every call so its message log stays
+complete and can be serialized later:
 
 ```go
 import "tholian-firewall/actions"
+import "tholian-firewall/adapters/mitigations/ebpf"
+import "tholian-firewall/insights"
+import "tholian-firewall/structs"
+import "os"
 
 func main() {
 
-    if actions.Init() == false {
+    console := structs.NewConsole(os.Stdout, os.Stderr, 0)
+
+    ebpf.Init(console)
+    insights.Init(console)
+
+    if actions.Init(console) == false {
         // no eBPF backend available; fall back or exit
     }
 
-    actions.Forbid("1.3.3.7")
-    actions.Forbid("evil.example")
+    actions.Forbid(console, "1.3.3.7")
+    actions.Forbid(console, "evil.example")
 
-    if actions.Check("1.3.3.7") {
+    if actions.Check(console, "1.3.3.7") {
         // traffic to 1.3.3.7 is currently dropped
     }
 
-    actions.Permit("1.3.3.7")
+    actions.Permit(console, "1.3.3.7")
 }
 ```
 

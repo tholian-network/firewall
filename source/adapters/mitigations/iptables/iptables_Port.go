@@ -1,36 +1,9 @@
 package iptables
 
 import "strconv"
+import "tholian-firewall/structs"
 
-func isForbiddenPort(chain string, port uint16) bool {
-
-	if port == 0 {
-		return false
-	}
-
-	value := strconv.FormatUint(uint64(port), 10)
-
-	if chain == "INPUT" {
-
-		return runForFamilies(func(program string) bool {
-			return ruleExists(program, "-C", "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				ruleExists(program, "-C", "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
-		})
-
-	} else if chain == "OUTPUT" {
-
-		return runForFamilies(func(program string) bool {
-			return ruleExists(program, "-C", "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
-				ruleExists(program, "-C", "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
-		})
-
-	}
-
-	return false
-
-}
-
-func forbidPort(chain string, port uint16) bool {
+func isForbiddenPort(console *structs.Console, chain string, port uint16) bool {
 
 	if port == 0 {
 		return false
@@ -41,15 +14,15 @@ func forbidPort(chain string, port uint16) bool {
 	if chain == "INPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return addRuleOnce(program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				addRuleOnce(program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+			return ruleExists(console, program, "-C", "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
+				ruleExists(console, program, "-C", "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
 		})
 
 	} else if chain == "OUTPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return addRuleOnce(program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
-				addRuleOnce(program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
+			return ruleExists(console, program, "-C", "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				ruleExists(console, program, "-C", "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
 	}
@@ -58,7 +31,7 @@ func forbidPort(chain string, port uint16) bool {
 
 }
 
-func permitPort(chain string, port uint16) bool {
+func forbidPort(console *structs.Console, chain string, port uint16) bool {
 
 	if port == 0 {
 		return false
@@ -69,15 +42,15 @@ func permitPort(chain string, port uint16) bool {
 	if chain == "INPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return deleteRuleOnce(program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				deleteRuleOnce(program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+			return addRuleOnce(console, program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
 		})
 
 	} else if chain == "OUTPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return deleteRuleOnce(program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
-				deleteRuleOnce(program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
+			return addRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
 	}
@@ -86,14 +59,42 @@ func permitPort(chain string, port uint16) bool {
 
 }
 
-func ForbidPort(port uint16) bool {
-	return forbidPort("INPUT", port) && forbidPort("OUTPUT", port)
+func permitPort(console *structs.Console, chain string, port uint16) bool {
+
+	if port == 0 {
+		return false
+	}
+
+	value := strconv.FormatUint(uint64(port), 10)
+
+	if chain == "INPUT" {
+
+		return runForFamilies(func(program string) bool {
+			return deleteRuleOnce(console, program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+		})
+
+	} else if chain == "OUTPUT" {
+
+		return runForFamilies(func(program string) bool {
+			return deleteRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
+		})
+
+	}
+
+	return false
+
 }
 
-func PermitPort(port uint16) bool {
-	return permitPort("INPUT", port) && permitPort("OUTPUT", port)
+func ForbidPort(console *structs.Console, port uint16) bool {
+	return forbidPort(console, "INPUT", port) && forbidPort(console, "OUTPUT", port)
 }
 
-func IsForbiddenPort(port uint16) bool {
-	return isForbiddenPort("INPUT", port) || isForbiddenPort("OUTPUT", port)
+func PermitPort(console *structs.Console, port uint16) bool {
+	return permitPort(console, "INPUT", port) && permitPort(console, "OUTPUT", port)
+}
+
+func IsForbiddenPort(console *structs.Console, port uint16) bool {
+	return isForbiddenPort(console, "INPUT", port) || isForbiddenPort(console, "OUTPUT", port)
 }

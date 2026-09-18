@@ -1,11 +1,11 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
 import "tholian-firewall/types"
 import "strconv"
 
-func PermitConnections(searches []matchers.Connection) bool {
+func PermitConnections(console *structs.Console, searches []matchers.Connection) bool {
 
 	var result bool = false
 
@@ -22,7 +22,7 @@ func PermitConnections(searches []matchers.Connection) bool {
 
 			total = total + 1
 
-			if permitDomain(search.Socket.Host) == true {
+			if permitDomain(console, search.Socket.Host) == true {
 				succeeded = succeeded + 1
 			}
 
@@ -34,7 +34,7 @@ func PermitConnections(searches []matchers.Connection) bool {
 
 				total = total + 1
 
-				if permitConnection(connection) == true {
+				if permitConnection(console, connection) == true {
 					succeeded = succeeded + 1
 				}
 

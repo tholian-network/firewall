@@ -4,7 +4,7 @@ package insights
 
 import "bytes"
 import "compress/gzip"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "encoding/json"
 import "io"
 import _ "embed"
@@ -13,6 +13,10 @@ import _ "embed"
 var embedded_Internet []byte
 
 func init() {
+	initialize = loadInternet
+}
+
+func loadInternet(console *structs.Console) {
 
 	buffer := bytes.NewBuffer(embedded_Internet)
 	reader, err1 := gzip.NewReader(buffer)

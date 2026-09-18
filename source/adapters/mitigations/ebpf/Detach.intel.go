@@ -2,6 +2,8 @@
 
 package ebpf
 
-func Detach(name string) bool {
+import "tholian-firewall/structs"
+
+func Detach(console *structs.Console, name string) bool {
 	return false
 }

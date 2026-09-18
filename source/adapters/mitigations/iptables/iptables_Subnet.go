@@ -1,6 +1,7 @@
 package iptables
 
 import "strconv"
+import "tholian-firewall/structs"
 
 func subnetSpec(address string, prefix uint8) (string, string) {
 
@@ -16,7 +17,7 @@ func subnetSpec(address string, prefix uint8) (string, string) {
 
 }
 
-func isForbiddenSubnet(chain string, address string, prefix uint8) bool {
+func isForbiddenSubnet(console *structs.Console, chain string, address string, prefix uint8) bool {
 
 	program, spec := subnetSpec(address, prefix)
 
@@ -25,16 +26,16 @@ func isForbiddenSubnet(chain string, address string, prefix uint8) bool {
 	}
 
 	if chain == "INPUT" {
-		return ruleExists(program, "-C", "INPUT", "-s", spec, "-j", "DROP")
+		return ruleExists(console, program, "-C", "INPUT", "-s", spec, "-j", "DROP")
 	} else if chain == "OUTPUT" {
-		return ruleExists(program, "-C", "OUTPUT", "-d", spec, "-j", "DROP")
+		return ruleExists(console, program, "-C", "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
 	return false
 
 }
 
-func forbidSubnet(chain string, address string, prefix uint8) bool {
+func forbidSubnet(console *structs.Console, chain string, address string, prefix uint8) bool {
 
 	program, spec := subnetSpec(address, prefix)
 
@@ -43,16 +44,16 @@ func forbidSubnet(chain string, address string, prefix uint8) bool {
 	}
 
 	if chain == "INPUT" {
-		return addRuleOnce(program, "INPUT", "-s", spec, "-j", "DROP")
+		return addRuleOnce(console, program, "INPUT", "-s", spec, "-j", "DROP")
 	} else if chain == "OUTPUT" {
-		return addRuleOnce(program, "OUTPUT", "-d", spec, "-j", "DROP")
+		return addRuleOnce(console, program, "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
 	return false
 
 }
 
-func permitSubnet(chain string, address string, prefix uint8) bool {
+func permitSubnet(console *structs.Console, chain string, address string, prefix uint8) bool {
 
 	program, spec := subnetSpec(address, prefix)
 
@@ -61,23 +62,23 @@ func permitSubnet(chain string, address string, prefix uint8) bool {
 	}
 
 	if chain == "INPUT" {
-		return deleteRuleOnce(program, "INPUT", "-s", spec, "-j", "DROP")
+		return deleteRuleOnce(console, program, "INPUT", "-s", spec, "-j", "DROP")
 	} else if chain == "OUTPUT" {
-		return deleteRuleOnce(program, "OUTPUT", "-d", spec, "-j", "DROP")
+		return deleteRuleOnce(console, program, "OUTPUT", "-d", spec, "-j", "DROP")
 	}
 
 	return false
 
 }
 
-func ForbidSubnet(address string, prefix uint8) bool {
-	return forbidSubnet("INPUT", address, prefix) && forbidSubnet("OUTPUT", address, prefix)
+func ForbidSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return forbidSubnet(console, "INPUT", address, prefix) && forbidSubnet(console, "OUTPUT", address, prefix)
 }
 
-func PermitSubnet(address string, prefix uint8) bool {
-	return permitSubnet("INPUT", address, prefix) && permitSubnet("OUTPUT", address, prefix)
+func PermitSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return permitSubnet(console, "INPUT", address, prefix) && permitSubnet(console, "OUTPUT", address, prefix)
 }
 
-func IsForbiddenSubnet(address string, prefix uint8) bool {
-	return isForbiddenSubnet("INPUT", address, prefix) || isForbiddenSubnet("OUTPUT", address, prefix)
+func IsForbiddenSubnet(console *structs.Console, address string, prefix uint8) bool {
+	return isForbiddenSubnet(console, "INPUT", address, prefix) || isForbiddenSubnet(console, "OUTPUT", address, prefix)
 }

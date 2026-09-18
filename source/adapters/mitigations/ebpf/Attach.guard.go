@@ -4,10 +4,10 @@ package ebpf
 
 import "github.com/cilium/ebpf/link"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "net"
 
-func Attach(name string) bool {
+func Attach(console *structs.Console, name string) bool {
 
 	var result bool = false
 
@@ -64,7 +64,7 @@ func Attach(name string) bool {
 
 }
 
-func AttachAll() int {
+func AttachAll(console *structs.Console) int {
 
 	var count int = 0
 
@@ -86,7 +86,7 @@ func AttachAll() int {
 					continue
 				}
 
-				if Attach(iface.Name) == true {
+				if Attach(console, iface.Name) == true {
 					count = count + 1
 				}
 

@@ -3,11 +3,11 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "strconv"
 
-func ForbidConnection(connection types.Connection) bool {
+func ForbidConnection(console *structs.Console, connection types.Connection) bool {
 
 	var result bool = false
 
@@ -24,22 +24,22 @@ func ForbidConnection(connection types.Connection) bool {
 
 				if connection.Target.Port != 0 {
 
-					if module.IsForbiddenPort(connection.Target.Port) {
+					if module.IsForbiddenPort(console, connection.Target.Port) {
 						result_target = true
 					} else {
 						console.Warn("adapters/ebpf: Forbid Connection \"*:" + strconv.FormatUint(uint64(connection.Target.Port), 10) + "\"")
-						result_target = module.ForbidPort(connection.Target.Port)
+						result_target = module.ForbidPort(console, connection.Target.Port)
 					}
 
 				}
 
 			} else if connection.Target.Host != ".arpa" {
 
-				if module.IsForbiddenAddress(connection.Target.Host) {
+				if module.IsForbiddenAddress(console, connection.Target.Host) {
 					result_target = true
 				} else {
 					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Target.Host + ":*\"")
-					result_target = module.ForbidAddress(connection.Target.Host)
+					result_target = module.ForbidAddress(console, connection.Target.Host)
 				}
 
 			}
@@ -54,22 +54,22 @@ func ForbidConnection(connection types.Connection) bool {
 
 				if connection.Source.Port != 0 {
 
-					if module.IsForbiddenPort(connection.Source.Port) {
+					if module.IsForbiddenPort(console, connection.Source.Port) {
 						result_source = true
 					} else {
 						console.Warn("adapters/ebpf: Forbid Connection \"*:" + strconv.FormatUint(uint64(connection.Source.Port), 10) + "\"")
-						result_source = module.ForbidPort(connection.Source.Port)
+						result_source = module.ForbidPort(console, connection.Source.Port)
 					}
 
 				}
 
 			} else if connection.Source.Host != ".arpa" {
 
-				if module.IsForbiddenAddress(connection.Source.Host) {
+				if module.IsForbiddenAddress(console, connection.Source.Host) {
 					result_source = true
 				} else {
 					console.Warn("adapters/ebpf: Forbid Connection \"" + connection.Source.Host + ":*\"")
-					result_source = module.ForbidAddress(connection.Source.Host)
+					result_source = module.ForbidAddress(console, connection.Source.Host)
 				}
 
 			}

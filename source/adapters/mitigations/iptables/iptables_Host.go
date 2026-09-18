@@ -1,17 +1,18 @@
 package iptables
 
 import "tholian-firewall/types"
+import "tholian-firewall/structs"
 
-func isForbiddenHost(chain string, address string) bool {
+func isForbiddenHost(console *structs.Console, chain string, address string) bool {
 
 	program, addr := resolveProgram(address)
 
 	if program != "" {
 
 		if chain == "INPUT" {
-			return ruleExists(program, "-C", "INPUT", "-s", addr, "-j", "DROP")
+			return ruleExists(console, program, "-C", "INPUT", "-s", addr, "-j", "DROP")
 		} else if chain == "OUTPUT" {
-			return ruleExists(program, "-C", "OUTPUT", "-d", addr, "-j", "DROP")
+			return ruleExists(console, program, "-C", "OUTPUT", "-d", addr, "-j", "DROP")
 		}
 
 	}
@@ -20,16 +21,16 @@ func isForbiddenHost(chain string, address string) bool {
 
 }
 
-func forbidHost(chain string, address string) bool {
+func forbidHost(console *structs.Console, chain string, address string) bool {
 
 	program, addr := resolveProgram(address)
 
 	if program != "" {
 
 		if chain == "INPUT" {
-			return addRuleOnce(program, "INPUT", "-s", addr, "-j", "DROP")
+			return addRuleOnce(console, program, "INPUT", "-s", addr, "-j", "DROP")
 		} else if chain == "OUTPUT" {
-			return addRuleOnce(program, "OUTPUT", "-d", addr, "-j", "DROP")
+			return addRuleOnce(console, program, "OUTPUT", "-d", addr, "-j", "DROP")
 		}
 
 	}
@@ -38,16 +39,16 @@ func forbidHost(chain string, address string) bool {
 
 }
 
-func permitHost(chain string, address string) bool {
+func permitHost(console *structs.Console, chain string, address string) bool {
 
 	program, addr := resolveProgram(address)
 
 	if program != "" {
 
 		if chain == "INPUT" {
-			return deleteRuleOnce(program, "INPUT", "-s", addr, "-j", "DROP")
+			return deleteRuleOnce(console, program, "INPUT", "-s", addr, "-j", "DROP")
 		} else if chain == "OUTPUT" {
-			return deleteRuleOnce(program, "OUTPUT", "-d", addr, "-j", "DROP")
+			return deleteRuleOnce(console, program, "OUTPUT", "-d", addr, "-j", "DROP")
 		}
 
 	}
@@ -56,32 +57,32 @@ func permitHost(chain string, address string) bool {
 
 }
 
-func ForbidAddress(address string) bool {
+func ForbidAddress(console *structs.Console, address string) bool {
 
 	if types.IsDomain(address) {
 		return false
 	}
 
-	return forbidHost("INPUT", address) && forbidHost("OUTPUT", address)
+	return forbidHost(console, "INPUT", address) && forbidHost(console, "OUTPUT", address)
 
 }
 
-func PermitAddress(address string) bool {
+func PermitAddress(console *structs.Console, address string) bool {
 
 	if types.IsDomain(address) {
 		return false
 	}
 
-	return permitHost("INPUT", address) && permitHost("OUTPUT", address)
+	return permitHost(console, "INPUT", address) && permitHost(console, "OUTPUT", address)
 
 }
 
-func IsForbiddenAddress(address string) bool {
+func IsForbiddenAddress(console *structs.Console, address string) bool {
 
 	if types.IsDomain(address) {
 		return false
 	}
 
-	return isForbiddenHost("INPUT", address) || isForbiddenHost("OUTPUT", address)
+	return isForbiddenHost(console, "INPUT", address) || isForbiddenHost(console, "OUTPUT", address)
 
 }

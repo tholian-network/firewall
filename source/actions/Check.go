@@ -3,7 +3,7 @@ package actions
 import "tholian-firewall/insights"
 import "tholian-firewall/structs"
 
-func Check(target string) bool {
+func Check(console *structs.Console, target string) bool {
 
 	var result bool = false
 
@@ -12,20 +12,20 @@ func Check(target string) bool {
 	if parsed.Kind == "connection" {
 
 		if parsed.Connection.Socket.Host != "" && parsed.Connection.Socket.Host != "any" {
-			if isForbiddenAddress(parsed.Connection.Socket.Host) == true {
+			if isForbiddenAddress(console, parsed.Connection.Socket.Host) == true {
 				result = true
 			}
 		}
 
 		if result == false && parsed.Connection.Socket.Port != 0 {
-			if isForbiddenPort(parsed.Connection.Socket.Port) == true {
+			if isForbiddenPort(console, parsed.Connection.Socket.Port) == true {
 				result = true
 			}
 		}
 
 	} else if parsed.Kind == "domain" {
 
-		if isForbiddenDomain(parsed.Domain) == true {
+		if isForbiddenDomain(console, parsed.Domain) == true {
 			result = true
 		}
 
@@ -37,7 +37,7 @@ func Check(target string) bool {
 
 			if subnet.IsValid() == true {
 
-				if isForbiddenSubnetOrAddress(subnet) == true {
+				if isForbiddenSubnetOrAddress(console, subnet) == true {
 					result = true
 				}
 
@@ -49,7 +49,7 @@ func Check(target string) bool {
 
 			for s := 0; s < len(network.Subnets); s++ {
 
-				if isForbiddenSubnet(network.Subnets[s].Address, network.Subnets[s].Prefix) == true {
+				if isForbiddenSubnet(console, network.Subnets[s].Address, network.Subnets[s].Prefix) == true {
 					result = true
 					break
 				}

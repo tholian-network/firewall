@@ -1,6 +1,6 @@
 package utils
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "compress/gzip"
 import "io/ioutil"
 import "os"
@@ -19,7 +19,7 @@ var bpf_required_options map[string]string = map[string]string{
 	"CONFIG_KPROBE_EVENTS":   "y",
 }
 
-func getKernelConfig() []byte {
+func getKernelConfig(console *structs.Console) []byte {
 
 	var result []byte
 
@@ -99,9 +99,9 @@ func getKernelConfig() []byte {
 
 }
 
-func IsBPF() bool {
+func IsBPF(console *structs.Console) bool {
 
-	var buffer []byte = getKernelConfig()
+	var buffer []byte = getKernelConfig(console)
 	var config string = string(buffer)
 
 	var options map[string]bool = make(map[string]bool)

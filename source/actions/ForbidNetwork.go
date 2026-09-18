@@ -4,7 +4,7 @@ import "tholian-firewall/insights"
 import "tholian-firewall/matchers"
 import "tholian-firewall/structs"
 
-func ForbidNetwork(search matchers.Network) bool {
+func ForbidNetwork(console *structs.Console, search matchers.Network) bool {
 
 	var result bool = false
 
@@ -14,7 +14,7 @@ func ForbidNetwork(search matchers.Network) bool {
 
 		if network.IsValid() {
 
-			if forbidNetwork(network) == true {
+			if forbidNetwork(console, network) == true {
 				result = true
 			}
 
@@ -26,7 +26,7 @@ func ForbidNetwork(search matchers.Network) bool {
 
 		if subnet.IsValid() {
 
-			if forbidSubnetOrAddress(subnet) == true {
+			if forbidSubnetOrAddress(console, subnet) == true {
 				result = true
 			}
 

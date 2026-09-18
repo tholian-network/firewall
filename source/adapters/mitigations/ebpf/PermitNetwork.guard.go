@@ -3,11 +3,10 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
 import "tholian-firewall/structs"
 import "strconv"
 
-func PermitNetwork(network structs.Network) bool {
+func PermitNetwork(console *structs.Console, network structs.Network) bool {
 
 	var result bool = false
 
@@ -19,13 +18,13 @@ func PermitNetwork(network structs.Network) bool {
 
 			subnet := network.Subnets[s]
 
-			if module.IsForbiddenSubnet(subnet.Address, subnet.Prefix) == false {
+			if module.IsForbiddenSubnet(console, subnet.Address, subnet.Prefix) == false {
 				continue
 			}
 
 			console.Info("adapters/ebpf: Permit Network \"" + subnet.Address + "/" + strconv.FormatUint(uint64(subnet.Prefix), 10) + "\"")
 
-			if module.PermitSubnet(subnet.Address, subnet.Prefix) == false {
+			if module.PermitSubnet(console, subnet.Address, subnet.Prefix) == false {
 				result = false
 			}
 

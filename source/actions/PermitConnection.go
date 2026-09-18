@@ -1,10 +1,10 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
 import "tholian-firewall/types"
 
-func PermitConnection(search matchers.Connection) bool {
+func PermitConnection(console *structs.Console, search matchers.Connection) bool {
 
 	var result bool = false
 
@@ -12,14 +12,14 @@ func PermitConnection(search matchers.Connection) bool {
 
 	if types.IsDomain(search.Socket.Host) == true {
 
-		result = permitDomain(search.Socket.Host)
+		result = permitDomain(console, search.Socket.Host)
 
 	} else {
 
 		connection := buildConnection(search)
 
 		if connection.IsValid() == true {
-			result = permitConnection(connection)
+			result = permitConnection(console, connection)
 		}
 
 	}

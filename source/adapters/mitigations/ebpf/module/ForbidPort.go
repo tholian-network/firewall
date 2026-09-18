@@ -1,9 +1,9 @@
 package module
 
 import "github.com/cilium/ebpf"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 
-func ForbidPort(port uint16) bool {
+func ForbidPort(console *structs.Console, port uint16) bool {
 
 	var result bool = false
 

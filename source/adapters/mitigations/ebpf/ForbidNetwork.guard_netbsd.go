@@ -4,7 +4,7 @@ package ebpf
 
 import "tholian-firewall/structs"
 
-func ForbidNetwork(network structs.Network) bool {
+func ForbidNetwork(console *structs.Console, network structs.Network) bool {
 
 	var result bool = false
 

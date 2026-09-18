@@ -1,10 +1,10 @@
 package actions
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "os"
 import "strings"
 
-func Load(path string) bool {
+func Load(console *structs.Console, path string) bool {
 
 	var result bool = true
 
@@ -30,11 +30,11 @@ func Load(path string) bool {
 		if len(fields) == 2 {
 
 			if fields[0] == "forbid" {
-				if Forbid(fields[1]) == false {
+				if Forbid(console, fields[1]) == false {
 					result = false
 				}
 			} else if fields[0] == "permit" {
-				if Permit(fields[1]) == false {
+				if Permit(console, fields[1]) == false {
 					result = false
 				}
 			} else {

@@ -3,11 +3,10 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
 import "tholian-firewall/structs"
 import "strconv"
 
-func ForbidNetwork(network structs.Network) bool {
+func ForbidNetwork(console *structs.Console, network structs.Network) bool {
 
 	var result bool = false
 
@@ -19,13 +18,13 @@ func ForbidNetwork(network structs.Network) bool {
 
 			subnet := network.Subnets[s]
 
-			if module.IsForbiddenSubnet(subnet.Address, subnet.Prefix) == true {
+			if module.IsForbiddenSubnet(console, subnet.Address, subnet.Prefix) == true {
 				continue
 			}
 
 			console.Warn("adapters/ebpf: Forbid Network \"" + subnet.Address + "/" + strconv.FormatUint(uint64(subnet.Prefix), 10) + "\"")
 
-			if module.ForbidSubnet(subnet.Address, subnet.Prefix) == false {
+			if module.ForbidSubnet(console, subnet.Address, subnet.Prefix) == false {
 				result = false
 			}
 

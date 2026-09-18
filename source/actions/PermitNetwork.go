@@ -4,7 +4,7 @@ import "tholian-firewall/insights"
 import "tholian-firewall/matchers"
 import "tholian-firewall/structs"
 
-func PermitNetwork(search matchers.Network) bool {
+func PermitNetwork(console *structs.Console, search matchers.Network) bool {
 
 	var result bool = false
 
@@ -14,7 +14,7 @@ func PermitNetwork(search matchers.Network) bool {
 
 		if network.IsValid() {
 
-			if permitNetwork(network) == true {
+			if permitNetwork(console, network) == true {
 				result = true
 			}
 
@@ -26,7 +26,7 @@ func PermitNetwork(search matchers.Network) bool {
 
 		if subnet.IsValid() {
 
-			if permitSubnetOrAddress(subnet) == true {
+			if permitSubnetOrAddress(console, subnet) == true {
 				result = true
 			}
 

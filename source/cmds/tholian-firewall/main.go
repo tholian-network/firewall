@@ -4,10 +4,11 @@ import "tholian-firewall/actions"
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/hosts"
 import "tholian-firewall/adapters/mitigations/iptables"
-import "tholian-firewall/console"
+import "tholian-firewall/insights"
+import "tholian-firewall/structs"
 import "os"
 
-func showUsage() {
+func showUsage(console *structs.Console) {
 
 	console.Info("")
 	console.Info("Tholian Firewall")
@@ -59,11 +60,16 @@ func showUsage() {
 
 func main() {
 
+	console := structs.NewConsole(os.Stdout, os.Stderr, 0)
+
+	ebpf.Init(console)
+	insights.Init(console)
+
 	if len(os.Args) >= 2 {
 
 		if os.Args[1] == "forbid" && len(os.Args) == 3 {
 
-			if actions.Forbid(os.Args[2]) == true {
+			if actions.Forbid(console, os.Args[2]) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
@@ -71,7 +77,7 @@ func main() {
 
 		} else if os.Args[1] == "permit" && len(os.Args) == 3 {
 
-			if actions.Permit(os.Args[2]) == true {
+			if actions.Permit(console, os.Args[2]) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
@@ -84,7 +90,7 @@ func main() {
 				os.Exit(3)
 			}
 
-			if actions.Check(os.Args[2]) == true {
+			if actions.Check(console, os.Args[2]) == true {
 				os.Exit(1)
 			} else {
 				os.Exit(0)
@@ -92,7 +98,7 @@ func main() {
 
 		} else if os.Args[1] == "search" && len(os.Args) == 3 {
 
-			results := actions.Search(os.Args[2])
+			results := actions.Search(console, os.Args[2])
 
 			if len(results) > 0 {
 
@@ -108,7 +114,7 @@ func main() {
 
 		} else if os.Args[1] == "init" && len(os.Args) == 2 {
 
-			if actions.Init() == true {
+			if actions.Init(console) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
@@ -116,7 +122,7 @@ func main() {
 
 		} else if os.Args[1] == "load" && len(os.Args) == 3 {
 
-			if actions.Load(os.Args[2]) == true {
+			if actions.Load(console, os.Args[2]) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
@@ -124,7 +130,7 @@ func main() {
 
 		} else if os.Args[1] == "status" && len(os.Args) == 2 {
 
-			results := actions.Status()
+			results := actions.Status(console)
 
 			for r := 0; r < len(results); r++ {
 				console.Log(results[r])
@@ -134,7 +140,7 @@ func main() {
 
 		} else if os.Args[1] == "selftest" && len(os.Args) == 2 {
 
-			if actions.SelfTest() == true {
+			if actions.SelfTest(console) == true {
 				os.Exit(0)
 			} else {
 				os.Exit(1)
@@ -142,14 +148,14 @@ func main() {
 
 		} else {
 
-			showUsage()
+			showUsage(console)
 			os.Exit(2)
 
 		}
 
 	} else {
 
-		showUsage()
+		showUsage(console)
 		os.Exit(2)
 
 	}

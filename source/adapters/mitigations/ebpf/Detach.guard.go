@@ -2,10 +2,10 @@
 
 package ebpf
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
 
-func Detach(name string) bool {
+func Detach(console *structs.Console, name string) bool {
 
 	var result bool = false
 
@@ -36,7 +36,7 @@ func Detach(name string) bool {
 
 }
 
-func DetachAll() int {
+func DetachAll(console *structs.Console) int {
 
 	var count int = 0
 
@@ -44,7 +44,7 @@ func DetachAll() int {
 
 		for name := range module.Links {
 
-			if Detach(name) == true {
+			if Detach(console, name) == true {
 				count = count + 1
 			}
 

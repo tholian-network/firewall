@@ -3,11 +3,13 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 
 var SUPPORTED bool
 
-func init() {
+func Init(console *structs.Console) {
+
+	module.Init(console)
 
 	SUPPORTED = module.Loaded
 

@@ -1,6 +1,6 @@
 package iptables
 
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "os/exec"
 import "errors"
@@ -68,7 +68,7 @@ func runForFamilies(callback func(program string) bool) bool {
 
 }
 
-func run(program string, args ...string) ([]byte, error) {
+func run(console *structs.Console, program string, args ...string) ([]byte, error) {
 
 	if program == "" {
 		return nil, errors.New("iptables program unavailable")
@@ -91,7 +91,7 @@ func run(program string, args ...string) ([]byte, error) {
 
 }
 
-func ruleExists(program string, args ...string) bool {
+func ruleExists(console *structs.Console, program string, args ...string) bool {
 
 	if program == "" {
 		return false
@@ -169,7 +169,7 @@ func untrackRule(program string, spec []string) {
 
 }
 
-func addRuleOnce(program string, spec ...string) bool {
+func addRuleOnce(console *structs.Console, program string, spec ...string) bool {
 
 	if program == "" {
 		return false
@@ -177,14 +177,14 @@ func addRuleOnce(program string, spec ...string) bool {
 
 	check := append([]string{"-C"}, spec...)
 
-	if ruleExists(program, check...) == true {
+	if ruleExists(console, program, check...) == true {
 		trackRule(program, spec)
 		return true
 	}
 
 	add := append([]string{"-A"}, spec...)
 
-	if _, err := run(program, add...); err == nil {
+	if _, err := run(console, program, add...); err == nil {
 		trackRule(program, spec)
 		return true
 	}
@@ -193,7 +193,7 @@ func addRuleOnce(program string, spec ...string) bool {
 
 }
 
-func deleteRuleOnce(program string, spec ...string) bool {
+func deleteRuleOnce(console *structs.Console, program string, spec ...string) bool {
 
 	if program == "" {
 		return false
@@ -201,14 +201,14 @@ func deleteRuleOnce(program string, spec ...string) bool {
 
 	check := append([]string{"-C"}, spec...)
 
-	if ruleExists(program, check...) == false {
+	if ruleExists(console, program, check...) == false {
 		untrackRule(program, spec)
 		return true
 	}
 
 	remove := append([]string{"-D"}, spec...)
 
-	if _, err := run(program, remove...); err == nil {
+	if _, err := run(console, program, remove...); err == nil {
 		untrackRule(program, spec)
 		return true
 	}
@@ -232,7 +232,7 @@ func Status() []string {
 
 }
 
-func Flush() bool {
+func Flush(console *structs.Console) bool {
 
 	managedMutex.Lock()
 	rules := append([]managedRule{}, managed...)
@@ -245,7 +245,7 @@ func Flush() bool {
 
 		remove := append([]string{"-D"}, rules[r].spec...)
 
-		if _, err := run(rules[r].program, remove...); err != nil {
+		if _, err := run(console, rules[r].program, remove...); err != nil {
 			result = false
 		}
 

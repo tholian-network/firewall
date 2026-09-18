@@ -3,11 +3,11 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/console"
+import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "strconv"
 
-func PermitConnection(connection types.Connection) bool {
+func PermitConnection(console *structs.Console, connection types.Connection) bool {
 
 	var result bool = false
 
@@ -24,9 +24,9 @@ func PermitConnection(connection types.Connection) bool {
 
 				if connection.Target.Port != 0 {
 
-					if module.IsForbiddenPort(connection.Target.Port) {
+					if module.IsForbiddenPort(console, connection.Target.Port) {
 						console.Info("adapters/ebpf: Permit Connection \"*:" + strconv.FormatUint(uint64(connection.Target.Port), 10) + "\"")
-						result_target = module.PermitPort(connection.Target.Port)
+						result_target = module.PermitPort(console, connection.Target.Port)
 					} else {
 						result_target = true
 					}
@@ -35,9 +35,9 @@ func PermitConnection(connection types.Connection) bool {
 
 			} else if connection.Target.Host != ".arpa" {
 
-				if module.IsForbiddenAddress(connection.Target.Host) {
+				if module.IsForbiddenAddress(console, connection.Target.Host) {
 					console.Info("adapters/ebpf: Permit Connection \"" + connection.Target.Host + ":*\"")
-					result_target = module.PermitAddress(connection.Target.Host)
+					result_target = module.PermitAddress(console, connection.Target.Host)
 				} else {
 					result_target = true
 				}
@@ -54,9 +54,9 @@ func PermitConnection(connection types.Connection) bool {
 
 				if connection.Source.Port != 0 {
 
-					if module.IsForbiddenPort(connection.Source.Port) {
+					if module.IsForbiddenPort(console, connection.Source.Port) {
 						console.Info("adapters/ebpf: Permit Connection \"*:" + strconv.FormatUint(uint64(connection.Source.Port), 10) + "\"")
-						result_source = module.PermitPort(connection.Source.Port)
+						result_source = module.PermitPort(console, connection.Source.Port)
 					} else {
 						result_source = true
 					}
@@ -65,9 +65,9 @@ func PermitConnection(connection types.Connection) bool {
 
 			} else if connection.Source.Host != ".arpa" {
 
-				if module.IsForbiddenAddress(connection.Source.Host) {
+				if module.IsForbiddenAddress(console, connection.Source.Host) {
 					console.Info("adapters/ebpf: Permit Connection \"" + connection.Source.Host + ":*\"")
-					result_source = module.PermitAddress(connection.Source.Host)
+					result_source = module.PermitAddress(console, connection.Source.Host)
 				} else {
 					result_source = true
 				}

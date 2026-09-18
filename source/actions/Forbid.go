@@ -1,15 +1,17 @@
 package actions
 
-func Forbid(target string) bool {
+import "tholian-firewall/structs"
+
+func Forbid(console *structs.Console, target string) bool {
 
 	parsed := ParseTarget(target)
 
 	if parsed.Kind == "network" {
-		return ForbidNetwork(parsed.Network)
+		return ForbidNetwork(console, parsed.Network)
 	} else if parsed.Kind == "connection" {
-		return ForbidConnection(parsed.Connection)
+		return ForbidConnection(console, parsed.Connection)
 	} else if parsed.Kind == "domain" {
-		return forbidDomain(parsed.Domain)
+		return forbidDomain(console, parsed.Domain)
 	}
 
 	return false

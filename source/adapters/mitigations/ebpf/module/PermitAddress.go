@@ -2,9 +2,10 @@ package module
 
 import "github.com/cilium/ebpf"
 import "tholian-firewall/types"
+import "tholian-firewall/structs"
 import "errors"
 
-func PermitAddress(address string) bool {
+func PermitAddress(console *structs.Console, address string) bool {
 
 	var result bool = false
 
