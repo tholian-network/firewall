@@ -19,26 +19,29 @@ func NewNetwork(name string) Network {
 
 }
 
+func (network *Network) HasName() bool {
+	return network.Name != ""
+}
+
+func (network *Network) HasSubnets() bool {
+	return len(network.Subnets) > 0
+}
+
 func (network *Network) IsValid() bool {
 
-	if network.Name != "" {
+	if network.HasName() == false {
+		return false
+	}
 
-		var result bool = true
+	for s := 0; s < len(network.Subnets); s++ {
 
-		for s := 0; s < len(network.Subnets); s++ {
-
-			if network.Subnets[s].IsValid() == false {
-				result = false
-				break
-			}
-
+		if network.Subnets[s].IsValid() == false {
+			return false
 		}
-
-		return result
 
 	}
 
-	return false
+	return true
 
 }
 

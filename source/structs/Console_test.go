@@ -67,6 +67,30 @@ func TestConsoleConcurrentAccess(t *testing.T) {
 
 }
 
+func TestConsoleRenderInspect(t *testing.T) {
+
+	source := NewConsole(nil, nil, 0)
+	target := NewConsole(nil, nil, 0)
+
+	source.Inspect(map[string]string{"key": "value"})
+	source.Render(target)
+
+	if target.Length() != 1 {
+		t.Fatalf("expected 1 rendered message, got %d", target.Length())
+	}
+
+	message := target.Messages[0]
+
+	if message.Method != "Inspect" {
+		t.Fatalf("expected Inspect message, got %q", message.Method)
+	}
+
+	if message.Value == "" {
+		t.Fatal("Inspect message was empty")
+	}
+
+}
+
 func TestConsoleRenderConcurrent(t *testing.T) {
 
 	source := NewConsole(nil, nil, 0)

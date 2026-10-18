@@ -56,7 +56,7 @@ func (internet *Internet) AddSubnet(value Subnet) bool {
 	var result bool = false
 	var subnet = value
 
-	if subnet.Type == "ipv6" {
+	if subnet.Type == types.AddressTypeIPv6 {
 
 		prefix := subnet.Prefix
 		hash := subnet.Hash()
@@ -76,7 +76,7 @@ func (internet *Internet) AddSubnet(value Subnet) bool {
 			result = true
 		}
 
-	} else if subnet.Type == "ipv4" {
+	} else if subnet.Type == types.AddressTypeIPv4 {
 
 		prefix := subnet.Prefix
 		hash := subnet.Hash()
@@ -181,11 +181,11 @@ func (internet *Internet) SearchNetwork(value Network) []Subnet {
 
 	var result []Subnet
 
-	if value.Name != "" {
+	if value.HasName() {
 
 		network := internet.SearchASN(value.Name)
 
-		if network.Name != "" {
+		if network.HasName() {
 
 			for s := 0; s < len(network.Subnets); s++ {
 				result = append(result, network.Subnets[s])
@@ -193,13 +193,13 @@ func (internet *Internet) SearchNetwork(value Network) []Subnet {
 
 		}
 
-	} else if len(value.Subnets) > 0 {
+	} else if value.HasSubnets() {
 
 		for s := 0; s < len(value.Subnets); s++ {
 
 			found := internet.SearchSubnet(value.Subnets[s])
 
-			if found.Address != "" && found.Prefix != 0 {
+			if found.IsValid() {
 				result = append(result, found)
 			}
 
@@ -215,9 +215,14 @@ func (internet *Internet) SearchSubnet(value Subnet) Subnet {
 
 	var result Subnet
 
-	if value.Type == "ipv6" {
+	if value.Type == types.AddressTypeIPv6 {
 
 		ipv6 := types.ParseIPv6(value.Address)
+
+		if ipv6 == nil {
+			return result
+		}
+
 		prefixes := make([]uint8, 0)
 
 		for prefix := range internet.Mapv6 {
@@ -242,9 +247,14 @@ func (internet *Internet) SearchSubnet(value Subnet) Subnet {
 
 		}
 
-	} else if value.Type == "ipv4" {
+	} else if value.Type == types.AddressTypeIPv4 {
 
 		ipv4 := types.ParseIPv4(value.Address)
+
+		if ipv4 == nil {
+			return result
+		}
+
 		prefixes := make([]uint8, 0)
 
 		for prefix := range internet.Mapv4 {

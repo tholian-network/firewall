@@ -8,7 +8,7 @@ import "time"
 func toConsoleMessageWords(message string) []string {
 
 	result := make([]string, 0)
-	chunk  := ""
+	chunk := ""
 
 	for m := 0; m < len(message); m++ {
 
@@ -37,10 +37,10 @@ func toConsoleMessageWords(message string) []string {
 }
 
 type ConsoleMessage struct {
-	Time     time.Time `json:"datetime"`
-	Method   string    `json:"method"`
-	Value    string    `json:"value"`
-	Caller   struct {
+	Time   time.Time `json:"datetime"`
+	Method string    `json:"method"`
+	Value  string    `json:"value"`
+	Caller struct {
 		File string `json:"file"`
 		Line int    `json:"line"`
 	} `json:"caller"`
@@ -103,12 +103,12 @@ func (message *ConsoleMessage) IsSame(other ConsoleMessage) bool {
 			index1 := slices.Index(words1, "of")
 			index2 := slices.Index(words2, "of")
 
-			if index1 > 0 && index1 < len(words1) - 1 && index2 > 0 && index2 < len(words2) - 1 && index1 == index2 && len(words1) == len(words2) {
+			if index1 > 0 && index1 < len(words1)-1 && index2 > 0 && index2 < len(words2)-1 && index1 == index2 && len(words1) == len(words2) {
 
-				prefix1 := strings.Join(words1[0:index1 - 1], " ")
-				suffix1 := strings.Join(words1[index1 + 2:], " ")
-				prefix2 := strings.Join(words2[0:index2 - 1], " ")
-				suffix2 := strings.Join(words2[index2 + 2:], " ")
+				prefix1 := strings.Join(words1[0:index1-1], " ")
+				suffix1 := strings.Join(words1[index1+2:], " ")
+				prefix2 := strings.Join(words2[0:index2-1], " ")
+				suffix2 := strings.Join(words2[index2+2:], " ")
 
 				// message: "Parsing Incidents (1 of 5) and some other things"
 				// other:   "Parsing Incidents (2 of 5) and some other things"
@@ -125,10 +125,10 @@ func (message *ConsoleMessage) IsSame(other ConsoleMessage) bool {
 			words1 := toConsoleMessageWords(message.Value)
 			index1 := slices.Index(words1, "of")
 
-			if index1 > 0 && index1 < len(words1) - 1 {
+			if index1 > 0 && index1 < len(words1)-1 {
 
-				prefix1 := strings.Join(words1[0:index1 - 1], " ")
-				suffix1 := strings.Join(words1[index1 + 2:], " ")
+				prefix1 := strings.Join(words1[0:index1-1], " ")
+				suffix1 := strings.Join(words1[index1+2:], " ")
 
 				// message: "Parsing 1 of 5 Incidents"
 				// other:   "Parsing Incidents"
@@ -143,10 +143,10 @@ func (message *ConsoleMessage) IsSame(other ConsoleMessage) bool {
 			words2 := toConsoleMessageWords(message.Value)
 			index2 := slices.Index(words2, "of")
 
-			if index2 > 0 && index2 < len(words2) - 1 {
+			if index2 > 0 && index2 < len(words2)-1 {
 
-				prefix2 := strings.Join(words2[0:index2 - 1], " ")
-				suffix2 := strings.Join(words2[index2 + 2:], " ")
+				prefix2 := strings.Join(words2[0:index2-1], " ")
+				suffix2 := strings.Join(words2[index2+2:], " ")
 
 				// message: "Parsing Incidents"
 				// other:   "Parsing 1 of 5 Incidents"
@@ -198,7 +198,7 @@ func (message *ConsoleMessage) Lines() []string {
 				separator = " "
 			}
 
-			result = append(result, separator + line)
+			result = append(result, separator+line)
 
 		}
 
@@ -218,7 +218,7 @@ func (message *ConsoleMessage) Lines() []string {
 				separator = " "
 			}
 
-			result = append(result, separator + line)
+			result = append(result, separator+line)
 
 		}
 
