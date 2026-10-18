@@ -47,6 +47,8 @@ The Tholian Firewall takes a different stance:
 - Linux with XDP support (`CONFIG_X86_64`, a NIC/driver with XDP, or SKB mode).
 - Root, or `CAP_BPF` + `CAP_NET_ADMIN` (map creation and XDP attach need them).
 - To build: `go`, `clang`, `llc`/LLVM, and libbpf headers.
+- The embedded `source/insights/Internet.json.gz` dataset for `guard` builds.
+  It is intentionally not tracked by Git; see [Building](#building).
 
 ## Building
 
@@ -83,6 +85,7 @@ ls ./build/linux/*;
 | `guard_openwrt`                                    | eBPF adapter only                    |
 | `guard_freebsd` / `guard_netbsd` / `guard_openbsd` | iptables/hosts fallback              |
 | `intel` / `oversight`                              | eBPF stubs                           |
+| no tag                                             | eBPF stubs + iptables/hosts fallback |
 
 ## Running the CLI
 
@@ -93,10 +96,15 @@ sudo ./build/linux/tholian-firewall-guard-amd64 <action> [target]
 Targets use RFC 2732 syntax for IPv6 (`[v6]`, `[v6]/prefix`, `[v6]:port`):
 
 ```bash
-# Block an address, a subnet, and a connection
+# Block an address, a subnet, and an exact socket
 sudo tholian-firewall forbid "1.3.3.7";
 sudo tholian-firewall forbid "1.3.3.0/24";
 sudo tholian-firewall forbid "1.3.3.7:1338";
+
+# IP:Port bans only the exact socket, not the whole address
+sudo tholian-firewall forbid "1.3.3.7:1338";
+sudo tholian-firewall check "1.3.3.7"; # still allowed
+sudo tholian-firewall check "1.3.3.7:1338"; # forbidden
 
 # Block an IPv6 target
 sudo tholian-firewall forbid "[fe80::1337]/64";
@@ -169,19 +177,21 @@ func main() {
 
 Because unpinned BPF maps and XDP links live in the process that created them,
 the embedding process must stay alive for filtering to continue. Pinned maps and
-a daemon/IPC mode are planned; see [docs/ROADMAP.md](docs/ROADMAP.md).
+a daemon/IPC mode are planned; see [docs/TODO.md](docs/TODO.md).
 
 ## Testing
 
-Unit tests run anywhere; integration tests need root and a BPF-capable kernel:
+Unit tests run anywhere; integration tests need root, a BPF-capable kernel, and
+the embedded Internet dataset:
 
 ```bash
 bash test.sh
 ```
 
-The full log is written to `logs/test.log`. The suite builds a single
-integration test binary with `go test -c` and runs it under `sudo`, then does a
-CLI smoke test. See [docs/TESTING.md](docs/TESTING.md) for details.
+The full log is written to `logs/test.log`. The suite runs formatting and vet
+checks, unit tests with the race detector, builds a single integration test
+binary with `go test -c` and runs it under `sudo`, then does CLI smoke tests.
+See [docs/TESTING.md](docs/TESTING.md) for details.
 
 ## Documentation
 
@@ -197,6 +207,10 @@ CLI smoke test. See [docs/TESTING.md](docs/TESTING.md) for details.
 - Encrypted DNS (DoT/DoH) cannot be inspected; DNS-over-TCP is passed through.
 - The embedded internet map is large (~31 MB gzip / ~825 MB raw) and parsed at startup.
 - `permit` removes a ban; it cannot carve a hole in a broader ban.
+- `forbid IP:port` creates an exact socket ban. Does not ban the whole address.
+- `forbid domain:port` still bans the whole domain, not a single socket.
+- eBPF `status` prints domain bans as their FNV-1a hash, because the map only
+  stores the hash, not the original name.
 
 ## License
 

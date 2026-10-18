@@ -103,6 +103,8 @@ keys of exactly the matching size/order.
 | `ipv6_bans`     | `LPM_TRIE` | `{u32 prefixlen; u8 addr[16]}` (20 B) | `__u8` | `BPF_F_NO_PREALLOC` |
 | `ipv6_warnings` | `LRU_HASH` | `{u32 prefixlen; u8 addr[16]}`        | `__u8` |                     |
 | `port_bans`     | `HASH`     | `__u16` network order (2 B)           | `__u8` |                     |
+| `ipv4_sockets`  | `HASH`     | `{u8 addr[4]; __be16 port}` (6 B)     | `__u8` |                     |
+| `ipv6_sockets`  | `HASH`     | `{u8 addr[16]; __be16 port}` (18 B)   | `__u8` |                     |
 
 LPM-trie rules:
 
@@ -116,6 +118,8 @@ LPM-trie rules:
   readers dereference the value (`*banned != 0`).
 - `permit` deletes the key; there is no allowlist (D2).
 - A banned port blocks both source and destination port matches.
+- A banned socket (`IP:port`) blocks packets whose source **or** destination
+  socket tuple matches exactly. It does not ban the whole address.
 - A banned address blocks packets whose source **or** destination matches
   (LPM longest-prefix match, so a `/24` ban covers a `/32` lookup).
 
@@ -193,7 +197,7 @@ up interface. Native XDP is attempted first, then `XDPGenericMode`.
 
 ### 5.3 Map helpers
 
-- Addresses/subnets/ports/domains are written with
+- Addresses/subnets/ports/domains/sockets are written with
   `Update(key, 1, ebpf.UpdateAny)` and removed with `Delete`.
 - Lookups use `errors.Is(err, ebpf.ErrKeyNotExist)` (cilium wraps map errors;
   `==` never matches. See P13).
@@ -207,6 +211,8 @@ When a **domain** is forbidden, `Inspect.guard.go:ForbidAddress`:
 1. writes the domain hash into `domain_bans` (so that XDP program drops its DNS responses)
 2. resolves the domain with `net.LookupIP` and calls `module.ForbidAddress`
    for every returned `A` / `AAAA` address.
+3. remembers the resolved addresses in-process so `PermitAddress` removes
+   exactly the addresses that were installed, even if DNS changed meanwhile.
 
 `PermitAddress` mirrors this. This is why arbitrary TCP connections to a banned
 domain's IPs are blocked by the ordinary address-ban lookup, even if the client
@@ -231,6 +237,35 @@ Target parsing (`actions/Target.go`) follows RFC 2732 for IPv6:
 
 `[v6]`, `[v6]/prefix`, `[v6]:port`.
 
+Target semantics:
+
+- `IP` bans the address; `IP/prefix` bans the subnet (`/0` through `/32` or
+  `/128`).
+- `IP:port` bans the exact socket tuple (source or destination).
+- `*:port` bans the port in both source and destination roles.
+- `domain` bans the domain hash and its resolved A/AAAA addresses.
+  `domain:port` currently bans the whole domain; there is no per-domain socket
+  map.
+
+### Validation model
+
+Parsed values own their validity rules; callers should not compare fields
+against sentinel values:
+
+- `Target.IsValid()`/`IsNetwork()`/`IsConnection()`/`IsDomain()`
+- `matchers.Network.Kind()`, `HasName()`, `HasSubnet()`, `IsValid()`
+- `matchers.Connection.HasHost()`, `HasPort()`, `IsWildcard()`, `IsDomain()`,
+  `IsValid()`
+- `types.Socket.IsUnset()`, `IsAny()`, `IsUnspecified()`, `HasHost()`,
+  `HasPort()`, `IsValid()`
+- `types.Connection.IsClient()`, `IsServer()`, `IsPeer()`, `IsValid()`
+- `structs.Subnet.IsUnspecified()`, `IsDefaultRoute()`, `IsAddress()`, `IsValid()`
+- `structs.Network.HasName()`, `HasSubnets()`, `IsValid()`
+
+`IsValid()` answers whether a parsed value can be applied; the smaller
+predicates answer which rule shape it represents. This keeps sentinel handling
+(`"any"`, `"*"`, `0.0.0.0`, `::`) in one place per type.
+
 ---
 
 ## 7. Fallbacks
@@ -240,9 +275,11 @@ plus `Status`) so that actions can select a backend per target kind:
 
 - `iptables`: used when eBPF is unavailable. IPv4 (`iptables`/`iptables-nft`) and
   IPv6 (`ip6tables`/`ip6tables-nft`) are detected separately; port rules are
-  installed for both families. Rules are appended to `INPUT` and `OUTPUT`, are
-  idempotent (`-C` before `-A`), and are tracked in-process for `status`/`flush`.
-  Coarse; not equivalent to eBPF.
+  installed for both families and for both source and destination port roles.
+  Host+port rules use the remote socket direction (`INPUT -s host --sport port`,
+  `OUTPUT -d host --dport port`). Rules are appended to `INPUT` and `OUTPUT`,
+  are idempotent (`-C` before `-A`), and are tracked in-process for
+  `status`/`flush`. Coarse; not equivalent to eBPF.
 - `hosts`: rewrites only a managed block in `/etc/hosts` (delimited by
   `# BEGIN THOLIAN FIREWALL` / `# END THOLIAN FIREWALL`), preserving all other
   lines. Domain bans write both `0.0.0.0` and the IPv6 unspecified address, and
@@ -276,6 +313,7 @@ Build tags:
 | `guard_openwrt`                          | real eBPF adapter only         |
 | `guard_freebsd` / `_netbsd` / `_openbsd` | eBPF disabled, iptables/hosts  |
 | `intel` / `oversight`                    | eBPF stubs returning `false`   |
+| no tag                                   | eBPF stubs + fallbacks         |
 
 Architecture selects little-endian (`module.bpfel`) vs big-endian
 (`module.bpfeb`) bytecode.
@@ -287,7 +325,8 @@ Architecture selects little-endian (`module.bpfel`) vs big-endian
 Privileged eBPF behaviour cannot be tested in separate processes because maps
 and XDP links are process-scoped (D10). Therefore:
 
-- Unit tests live next to the code (`types`, `matchers`).
+- Unit tests live next to the code (`types`, `matchers`, `structs`, `insights`,
+  `utils`, `iptables`, `hosts`, and the pure eBPF key helpers).
 - Integration tests live in `source/tests/` and are compiled into **one**
   binary:
   ```bash
@@ -300,7 +339,12 @@ and XDP links are process-scoped (D10). Therefore:
 - `TestDNSDrop` crafts a DNS response and runs the program via
   `BPF_PROG_TEST_RUN` to assert `XDP_DROP`.
 - `TestDomainResolutionInstall` asserts resolved `A` / `AAAA` addresses land
-  in the ban maps.
+  in the ban maps and are removed again by permit.
+- `TestSocketRoundTrip`, `TestConnectionBansExactSocket`, and `TestSocketDrop`
+  cover exact `IP:port` bans in both map and packet paths.
+- `TestStatusIncludesPortsDomainsAndSockets` covers eBPF status output.
+- `TestTruncatedPacketPasses` and `TestNmapFinScanDrops` pin the fail-open and
+  scan-heuristic policies.
 - `TestAttachAll` is opt-in (`THOLIAN_TEST_ATTACH=1`) and detaches immediately.
 
 When running the compiled test binary **directly**, use `-test.run`
@@ -565,7 +609,9 @@ embed the library in a long-running backend for real deployments.
 
 - XDP is ingress-only; outbound traffic is not directly filtered.
 - Maps and XDP links are not pinned; the standalone CLI does not persist.
-- The embedded internet dataset is large and parsed fully at startup.
+- The embedded internet dataset is large, is not tracked by Git, and is parsed
+  fully at startup.
+- eBPF domain bans are visible in `status` only as their FNV-1a hash.
 - Encrypted DNS (DoT/DoH) cannot be inspected for domains.
 - DNS over TCP is passed through (only UDP 53/5353 is filtered).
 - The iptables/hosts fallbacks are coarse and not equivalent to eBPF.

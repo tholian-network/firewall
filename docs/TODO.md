@@ -1,12 +1,8 @@
-
-### cilium Bridge
-
-- [ ] Wire `Init`/`Attach` automatically from the CLI (currently explicit `init`)
-
 ### Firewall Core / CLI
 
+- [ ] Wire `Init`/`Attach` automatically from the CLI (currently explicit `init`)
 - [ ] Use `utils.IsBPF` in the bridge pre-check
-- [ ] Remove duplicate `matchers.Subnet`
+- [ ] Expose `iptables.Flush` as a CLI/action for stale fallback rules
 
 ### DNS Filtering
 
@@ -14,10 +10,6 @@
 - [ ] Verifier test of the DNS parsing path on hardware
 - [ ] Disallow DoH/DoT to avoid bypasses
 - [ ] DNS TXT exfiltration detection
-
-### Tests
-
-- [ ] `structs.Internet` tests with a small fixture
 
 ## Future Work
 
