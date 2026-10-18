@@ -15,7 +15,7 @@ func PermitConnection(console *structs.Console, search matchers.Connection) bool
 
 	} else {
 
-		connection := buildConnection(search)
+		connection := build_connection(search)
 
 		if connection.IsValid() == true {
 			result = permitConnection(console, connection)

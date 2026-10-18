@@ -3,7 +3,7 @@ package actions
 import "tholian-firewall/matchers"
 import "tholian-firewall/types"
 
-func buildConnection(search matchers.Connection) types.Connection {
+func build_connection(search matchers.Connection) types.Connection {
 
 	connection := types.NewConnection()
 
