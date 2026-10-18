@@ -60,6 +60,10 @@ func ParseASN(value string) *ASN {
 
 }
 
+func (asn ASN) IsValid() bool {
+	return asn >= 0
+}
+
 func (asn ASN) String() string {
 	return "AS" + strconv.Itoa(int(asn))
 }

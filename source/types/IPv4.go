@@ -1,6 +1,5 @@
 package types
 
-import "math"
 import "strconv"
 import "strings"
 
@@ -47,7 +46,7 @@ func IsIPv4AndPrefix(value string) bool {
 
 			prefix, err := strconv.ParseUint(tmp[1], 10, 64)
 
-			if IsIPv4(tmp[0]) && err == nil && prefix >= 8 && prefix <= 32 {
+			if IsIPv4(tmp[0]) && err == nil && prefix <= 32 {
 				return true
 			}
 
@@ -129,7 +128,7 @@ func ParseIPv4AndPrefix(value string) (*IPv4, uint8) {
 			tmp2 := ParseIPv4(tmp1[0])
 			num, err := strconv.ParseUint(tmp1[1], 10, 8)
 
-			if tmp2 != nil && err == nil && num >= 8 && num <= 32 {
+			if tmp2 != nil && err == nil && num <= 32 {
 				result_ipv4 = tmp2
 				result_prefix = uint8(num)
 			}
@@ -177,36 +176,12 @@ func (ipv4 IPv4) Bytes(prefix uint8) []byte {
 		bytes[i] = byte(ipv4[i])
 	}
 
-	if prefix%8 == 0 {
+	return mask_bytes(bytes, prefix)
 
-		bytes_length := int(prefix / 8)
-		bytes_mask := make([]byte, bytes_length)
-		copy(bytes_mask, bytes)
+}
 
-		for len(bytes_mask) < len(bytes) {
-			bytes_mask = append(bytes_mask, uint8(0))
-		}
-
-		return bytes_mask
-
-	} else {
-
-		bytes_length := int(math.Floor(float64(prefix / 8)))
-		bytes_mask := make([]byte, bytes_length)
-		copy(bytes_mask, bytes)
-
-		var last_byte byte = bytes[bytes_length]
-		last_byte_shift := int(int(prefix) - bytes_length*8)
-		bytes_mask = append(bytes_mask, last_byte>>(8-last_byte_shift))
-
-		for len(bytes_mask) < len(bytes) {
-			bytes_mask = append(bytes_mask, uint8(0))
-		}
-
-		return bytes_mask
-
-	}
-
+func (ipv4 IPv4) IsUnspecified() bool {
+	return ipv4 == IPv4{}
 }
 
 func (ipv4 IPv4) Scope() string {
@@ -216,7 +191,7 @@ func (ipv4 IPv4) Scope() string {
 	private_ipv4s := []string{
 
 		// RFC1122
-		"0.0.0.0",
+		UnspecifiedIPv4,
 		"127.",
 
 		// RFC1918

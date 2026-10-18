@@ -2,6 +2,19 @@ package types
 
 import "testing"
 
+func FuzzParseIPv4(f *testing.F) {
+
+	f.Add("1.3.3.7")
+	f.Add("1.3.3.256")
+	f.Add("")
+
+	f.Fuzz(func(t *testing.T, value string) {
+		_ = IsIPv4(value)
+		_ = ParseIPv4(value)
+	})
+
+}
+
 func TestIsIPv4(t *testing.T) {
 
 	cases := map[string]bool{
@@ -30,7 +43,8 @@ func TestIsIPv4AndPrefix(t *testing.T) {
 		"1.3.3.0/24": true,
 		"1.3.3.7/32": true,
 		"1.3.3.7/8":  true,
-		"1.3.3.7/7":  false,
+		"1.3.3.7/7":  true,
+		"1.3.3.7/0":  true,
 		"1.3.3.7/33": false,
 		"1.3.3.7":    false,
 	}
@@ -82,3 +96,45 @@ func TestIPv4Bytes(t *testing.T) {
 	}
 
 }
+
+func TestParseIPv4NonOctetPrefix(t *testing.T) {
+
+	ipv4 := ParseIPv4("1.3.255.7")
+
+	if ipv4 == nil {
+		t.Fatal("ParseIPv4 returned nil")
+	}
+
+	cases := []struct {
+		prefix   uint8
+		expected []byte
+	}{
+		{0, []byte{0, 0, 0, 0}},
+		{1, []byte{0, 0, 0, 0}},
+		{12, []byte{1, 0, 0, 0}},
+		{17, []byte{1, 3, 128, 0}},
+		{20, []byte{1, 3, 240, 0}},
+		{24, []byte{1, 3, 255, 0}},
+		{31, []byte{1, 3, 255, 6}},
+		{32, []byte{1, 3, 255, 7}},
+	}
+
+	for _, c := range cases {
+
+		result := ipv4.Bytes(c.prefix)
+
+		if len(result) != len(c.expected) {
+			t.Fatalf("IPv4.Bytes(%d) length = %d", c.prefix, len(result))
+		}
+
+		for b := 0; b < len(result); b++ {
+			if result[b] != c.expected[b] {
+				t.Errorf("IPv4.Bytes(%d) = %v, expected %v", c.prefix, result, c.expected)
+				break
+			}
+		}
+
+	}
+
+}
+

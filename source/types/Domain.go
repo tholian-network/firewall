@@ -34,49 +34,34 @@ func isASCIILabel(value string) bool {
 
 func IsDomain(value string) bool {
 
-	if strings.Contains(value, ".") {
+	value = strings.TrimSpace(value)
+	value = strings.TrimSuffix(value, ".")
 
-		labels := strings.Split(value, ".")
-		valid := true
+	if value == "" || len(value) > 253 || strings.Contains(value, ".") == false {
+		return false
+	}
 
-		if len(labels) >= 2 {
+	labels := strings.Split(value, ".")
 
-			for l := 0; l < len(labels)-1; l++ {
+	if len(labels) < 2 {
+		return false
+	}
 
-				label := labels[l]
+	for l := 0; l < len(labels); l++ {
 
-				if isASCIILabel(label) && len(label) >= 1 {
-					// Do Nothing
-				} else {
-					valid = false
-					break
-				}
-
-			}
-
-			tld := labels[len(labels)-1]
-
-			if isASCIILabel(tld) && len(tld) >= 2 {
-				// Do Nothing
-			} else {
-				valid = false
-			}
-
-		} else if len(labels) == 1 {
-
-			hostname := labels[0]
-
-			if isASCIILabel(hostname) && len(hostname) >= 3 {
-				valid = true
-			}
-
+		if len(labels[l]) < 1 || len(labels[l]) > 63 {
+			return false
 		}
 
-		return valid
+		if isASCIILabel(labels[l]) == false {
+			return false
+		}
 
 	}
 
-	return false
+	tld := labels[len(labels)-1]
+
+	return len(tld) >= 2
 
 }
 
@@ -107,7 +92,7 @@ func ParseDomain(value string) *Domain {
 	var result *Domain = nil
 
 	if IsDomain(value) {
-		domain := Domain(value)
+		domain := Domain(strings.TrimSuffix(strings.TrimSpace(value), "."))
 		result = &domain
 	}
 
@@ -140,6 +125,10 @@ func ParseDomainAndPort(value string) (*Domain, uint16) {
 
 	return result_domain, result_port
 
+}
+
+func (domain Domain) IsValid() bool {
+	return IsDomain(string(domain))
 }
 
 func (domain Domain) Bytes() []byte {

@@ -1,159 +1,44 @@
 package types
 
-import "math"
+import "net/netip"
 import "strconv"
 import "strings"
 
-func formatIPv6(value string) string {
+type IPv6 [16]byte
 
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-		value = value[1 : len(value)-1]
-	}
+func normalizeIPv6(value string) (string, bool) {
 
-	if strings.Contains(value, "::") {
+	value = strings.TrimSpace(value)
 
-		tmp := strings.Split(value, "::")
-		prefix := strings.Split(tmp[0], ":")
-		suffix := strings.Split(tmp[1], ":")
-		complete := []string{"0000", "0000", "0000", "0000", "0000", "0000", "0000", "0000"}
+	if strings.HasPrefix(value, "[") || strings.HasSuffix(value, "]") {
 
-		for p := 0; p < len(prefix); p++ {
-
-			chunk := prefix[p]
-			c := p
-
-			if len(chunk) == 1 {
-				complete[c] = "000" + chunk
-			} else if len(chunk) == 2 {
-				complete[c] = "00" + chunk
-			} else if len(chunk) == 3 {
-				complete[c] = "0" + chunk
-			} else if len(chunk) == 4 {
-				complete[c] = chunk
-			}
-
+		if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+			value = value[1 : len(value)-1]
+		} else {
+			return "", false
 		}
-
-		for s := 0; s < len(suffix); s++ {
-
-			chunk := suffix[s]
-			c := 8 - len(suffix) + s
-
-			if len(chunk) == 1 {
-				complete[c] = "000" + chunk
-			} else if len(chunk) == 2 {
-				complete[c] = "00" + chunk
-			} else if len(chunk) == 3 {
-				complete[c] = "0" + chunk
-			} else if len(chunk) == 4 {
-				complete[c] = chunk
-			}
-
-		}
-
-		return "[" + strings.Join(complete, ":") + "]"
-
-	} else if strings.Contains(value, ":") {
-
-		chunks := strings.Split(value, ":")
-		complete := []string{"0000", "0000", "0000", "0000", "0000", "0000", "0000", "0000"}
-
-		for c := 0; c < len(chunks); c++ {
-
-			chunk := chunks[c]
-
-			if len(chunk) == 1 {
-				complete[c] = "000" + chunk
-			} else if len(chunk) == 2 {
-				complete[c] = "00" + chunk
-			} else if len(chunk) == 3 {
-				complete[c] = "0" + chunk
-			} else if len(chunk) == 4 {
-				complete[c] = chunk
-			}
-
-		}
-
-		return "[" + strings.Join(complete, ":") + "]"
 
 	}
 
-	return ""
+	if value == "" || strings.Contains(value, ".") || strings.Contains(value, "%") {
+		return "", false
+	}
+
+	address, err := netip.ParseAddr(value)
+
+	if err != nil || address.Is6() == false {
+		return "", false
+	}
+
+	return value, true
 
 }
 
-type IPv6 [16]byte
-
 func IsIPv6(value string) bool {
 
-	inner := value
+	_, ok := normalizeIPv6(value)
 
-	if strings.HasPrefix(inner, "[") || strings.HasSuffix(inner, "]") {
-
-		if strings.HasPrefix(inner, "[") && strings.HasSuffix(inner, "]") {
-			inner = inner[1 : len(inner)-1]
-		} else {
-			return false
-		}
-
-	}
-
-	// Ignore embedded IPv6::IPv4 syntax
-	if strings.Contains(inner, ".") {
-		return false
-	}
-
-	if strings.Contains(inner, ":") == false {
-		return false
-	}
-
-	if strings.Count(inner, "::") > 1 {
-		return false
-	}
-
-	groups := make([]string, 0)
-
-	if strings.Contains(inner, "::") {
-
-		parts := strings.SplitN(inner, "::", 2)
-
-		if parts[0] != "" {
-			groups = append(groups, strings.Split(parts[0], ":")...)
-		}
-
-		if parts[1] != "" {
-			groups = append(groups, strings.Split(parts[1], ":")...)
-		}
-
-		if len(groups) > 8 {
-			return false
-		}
-
-	} else {
-
-		groups = strings.Split(inner, ":")
-
-		if len(groups) != 8 {
-			return false
-		}
-
-	}
-
-	for g := 0; g < len(groups); g++ {
-
-		if len(groups[g]) < 1 || len(groups[g]) > 4 {
-			return false
-		}
-
-		_, err := strconv.ParseUint(groups[g], 16, 64)
-
-		if err != nil {
-			return false
-		}
-
-	}
-
-	return true
+	return ok
 
 }
 
@@ -167,7 +52,7 @@ func IsIPv6AndPrefix(value string) bool {
 
 			prefix, err := strconv.ParseUint(tmp[1], 10, 64)
 
-			if IsIPv6("["+tmp[0]+"]") && err == nil && prefix >= 8 && prefix <= 128 {
+			if IsIPv6("["+tmp[0]+"]") && err == nil && prefix <= 128 {
 				return true
 			}
 
@@ -203,36 +88,21 @@ func IsIPv6AndPort(value string) bool {
 
 func ParseIPv6(raw string) *IPv6 {
 
-	var result *IPv6 = nil
+	value, ok := normalizeIPv6(raw)
 
-	value := formatIPv6(raw)
-
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-
-		tmp1 := strings.Join(strings.Split(value[1:len(value)-1], ":"), "")
-		tmp2 := make([]uint8, 0)
-
-		for t := 0; t < len(tmp1); t += 2 {
-
-			hex := string(tmp1[t : t+2])
-			num, err := strconv.ParseUint(hex, 16, 8)
-
-			if err == nil {
-				tmp2 = append(tmp2, uint8(num))
-			} else {
-				tmp2 = append(tmp2, uint8(0))
-			}
-
-		}
-
-		if len(tmp2) == 16 {
-			ipv6 := IPv6(tmp2)
-			result = &ipv6
-		}
-
+	if ok == false {
+		return nil
 	}
 
-	return result
+	address, err := netip.ParseAddr(value)
+
+	if err != nil {
+		return nil
+	}
+
+	ipv6 := IPv6(address.As16())
+
+	return &ipv6
 
 }
 
@@ -250,7 +120,7 @@ func ParseIPv6AndPrefix(value string) (*IPv6, uint8) {
 			tmp2 := ParseIPv6("[" + tmp1[0] + "]")
 			num, err := strconv.ParseUint(tmp1[1], 10, 8)
 
-			if tmp2 != nil && err == nil && num >= 8 && num <= 128 {
+			if tmp2 != nil && err == nil && num <= 128 {
 				result_ipv6 = tmp2
 				result_prefix = uint8(num)
 			}
@@ -298,36 +168,12 @@ func (ipv6 IPv6) Bytes(prefix uint8) []byte {
 		bytes[i] = byte(ipv6[i])
 	}
 
-	if prefix%8 == 0 {
+	return mask_bytes(bytes, prefix)
 
-		bytes_length := int(prefix / 8)
-		bytes_mask := make([]byte, bytes_length)
-		copy(bytes_mask, bytes)
+}
 
-		for len(bytes_mask) < len(bytes) {
-			bytes_mask = append(bytes_mask, uint8(0))
-		}
-
-		return bytes_mask
-
-	} else {
-
-		bytes_length := int(math.Floor(float64(prefix / 8)))
-		bytes_mask := make([]byte, bytes_length)
-		copy(bytes_mask, bytes)
-
-		var last_byte byte = bytes[bytes_length]
-		last_byte_shift := int(int(prefix) - bytes_length*8)
-		bytes_mask = append(bytes_mask, last_byte>>(8-last_byte_shift))
-
-		for len(bytes_mask) < len(bytes) {
-			bytes_mask = append(bytes_mask, uint8(0))
-		}
-
-		return bytes_mask
-
-	}
-
+func (ipv6 IPv6) IsUnspecified() bool {
+	return ipv6 == IPv6{}
 }
 
 func (ipv6 IPv6) Scope() string {
@@ -337,7 +183,7 @@ func (ipv6 IPv6) Scope() string {
 	private_ipv6s := []string{
 
 		// RFC3513
-		"0000:0000:0000:0000:0000:0000:0000:0000",
+		UnspecifiedIPv6,
 		"0000:0000:0000:0000:0000:0000:0000:0001",
 		"fe80:0000:0000:0000",
 
