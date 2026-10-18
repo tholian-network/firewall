@@ -123,7 +123,7 @@ func TestForbidDomainIsIdempotent(t *testing.T) {
 func TestRenderHostsReplacesBlock(t *testing.T) {
 
 	content := "before\n" + beginMarker + "\n0.0.0.0 old.example\n" + endMarker + "\nafter\n"
-	rendered := renderHosts(content, []string{"new.example"})
+	rendered := render_hosts(content, []string{"new.example"})
 
 	if strings.Count(rendered, beginMarker) != 1 {
 		t.Fatal("expected exactly one managed block")
@@ -139,6 +139,77 @@ func TestRenderHostsReplacesBlock(t *testing.T) {
 
 	if strings.Contains(rendered, "before") == false || strings.Contains(rendered, "after") == false {
 		t.Fatal("surrounding lines were lost")
+	}
+
+}
+
+func TestForbidDomainThroughSymlink(t *testing.T) {
+
+	directory := t.TempDir()
+	target := filepath.Join(directory, "hosts-real")
+	link := filepath.Join(directory, "hosts")
+
+	if err := os.WriteFile(target, []byte("127.0.0.1 localhost\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+
+	hostsPath = link
+	Hosts = make(map[string][]string)
+	SUPPORTED = true
+
+	if ForbidDomain(test_console, "evil.example") == false {
+		t.Fatal("ForbidDomain returned false")
+	}
+
+	buffer, err := os.ReadFile(target)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(buffer), "0.0.0.0 evil.example") == false {
+		t.Fatal("the symlink target was not updated")
+	}
+
+	info, err := os.Lstat(link)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("the hosts path is no longer a symlink")
+	}
+
+}
+
+func TestRenderHostsRepairsMissingEndMarker(t *testing.T) {
+
+	content := "before\n" + beginMarker + "\n0.0.0.0 old.example\n"
+	rendered := render_hosts(content, []string{"new.example"})
+
+	if strings.Count(rendered, beginMarker) != 1 {
+		t.Fatal("expected exactly one managed block")
+	}
+
+	if strings.Count(rendered, endMarker) != 1 {
+		t.Fatal("expected the managed block to be closed")
+	}
+
+	if strings.Contains(rendered, "old.example") == true {
+		t.Fatal("stale entry survived the rewrite")
+	}
+
+	if strings.Contains(rendered, "before") == false {
+		t.Fatal("content before the malformed block was lost")
+	}
+
+	if strings.Contains(rendered, "0.0.0.0 new.example") == false {
+		t.Fatal("new entry missing")
 	}
 
 }

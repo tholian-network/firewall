@@ -8,8 +8,8 @@ import "sync"
 const beginMarker = "# BEGIN THOLIAN FIREWALL - do not edit below"
 const endMarker = "# END THOLIAN FIREWALL"
 
-const sinkIPv4 = "0.0.0.0"
-const sinkIPv6 = "0000:0000:0000:0000:0000:0000:0000:0000"
+const sinkIPv4 = types.UnspecifiedIPv4
+const sinkIPv6 = types.UnspecifiedIPv6
 
 var hostsPath = "/etc/hosts"
 

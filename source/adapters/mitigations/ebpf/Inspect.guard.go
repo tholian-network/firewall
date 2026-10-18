@@ -6,8 +6,61 @@ import "tholian-firewall/adapters/mitigations/ebpf/module"
 import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "encoding/binary"
+import "encoding/hex"
+import "sort"
 import "strconv"
 import "net"
+import "sync"
+
+var resolvedDomainsMutex sync.Mutex
+var resolvedDomains map[string][]string
+
+func rememberResolvedAddresses(domain string, addresses []string) {
+
+	resolvedDomainsMutex.Lock()
+	defer resolvedDomainsMutex.Unlock()
+
+	if resolvedDomains == nil {
+		resolvedDomains = make(map[string][]string)
+	}
+
+	merged := resolvedDomains[domain]
+
+	for _, address := range addresses {
+
+		found := false
+
+		for _, known := range merged {
+			if known == address {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			merged = append(merged, address)
+		}
+
+	}
+
+	resolvedDomains[domain] = merged
+
+}
+
+func takeResolvedAddresses(domain string) ([]string, bool) {
+
+	resolvedDomainsMutex.Lock()
+	defer resolvedDomainsMutex.Unlock()
+
+	addresses, ok := resolvedDomains[domain]
+
+	if ok == true {
+		delete(resolvedDomains, domain)
+	}
+
+	return addresses, ok
+
+}
 
 func ForbidAddress(console *structs.Console, address string) bool {
 
@@ -19,11 +72,19 @@ func ForbidAddress(console *structs.Console, address string) bool {
 
 		resolved, err := net.LookupIP(address)
 
-		if err == nil {
-			for r := 0; r < len(resolved); r++ {
-				module.ForbidAddress(console, resolved[r].String())
-			}
+		if err != nil {
+			console.Warn("adapters/ebpf: Cannot resolve \"" + address + "\": " + err.Error())
+			return true
 		}
+
+		addresses := make([]string, 0, len(resolved))
+
+		for r := 0; r < len(resolved); r++ {
+			addresses = append(addresses, resolved[r].String())
+			module.ForbidAddress(console, resolved[r].String())
+		}
+
+		rememberResolvedAddresses(address, addresses)
 
 		return true
 
@@ -38,12 +99,28 @@ func PermitAddress(console *structs.Console, address string) bool {
 	if types.IsDomain(address) {
 
 		result := module.PermitAddress(console, address)
-		resolved, err := net.LookupIP(address)
 
-		if err == nil {
-			for r := 0; r < len(resolved); r++ {
-				module.PermitAddress(console, resolved[r].String())
+		resolved, ok := takeResolvedAddresses(address)
+
+		if ok == false {
+
+			addresses, err := net.LookupIP(address)
+
+			if err != nil {
+				console.Warn("adapters/ebpf: Cannot resolve \"" + address + "\": " + err.Error())
+				return result
 			}
+
+			resolved = make([]string, 0, len(addresses))
+
+			for r := 0; r < len(addresses); r++ {
+				resolved = append(resolved, addresses[r].String())
+			}
+
+		}
+
+		for r := 0; r < len(resolved); r++ {
+			module.PermitAddress(console, resolved[r])
 		}
 
 		return result
@@ -82,6 +159,18 @@ func IsForbiddenPort(console *structs.Console, port uint16) bool {
 	return module.IsForbiddenPort(console, port)
 }
 
+func ForbidSocket(console *structs.Console, address string, port uint16) bool {
+	return module.ForbidSocket(console, address, port)
+}
+
+func PermitSocket(console *structs.Console, address string, port uint16) bool {
+	return module.PermitSocket(console, address, port)
+}
+
+func IsForbiddenSocket(console *structs.Console, address string, port uint16) bool {
+	return module.IsForbiddenSocket(console, address, port)
+}
+
 func Status() []string {
 
 	var result []string
@@ -90,16 +179,33 @@ func Status() []string {
 		return result
 	}
 
-	if module.Module.PortBans != nil {
+	if module.Module.DomainBans != nil {
 
-		iterator := module.Module.PortBans.Iterate()
-		var key uint16
+		iterator := module.Module.DomainBans.Iterate()
+		var key []byte
 		var value uint8
 
 		for iterator.Next(&key, &value) {
 
-			if value != 0 {
-				result = append(result, "port "+strconv.Itoa(int(key)))
+			if value != 0 && len(key) == 8 {
+				result = append(result, "domain #"+hex.EncodeToString(key))
+			}
+
+		}
+
+	}
+
+	if module.Module.PortBans != nil {
+
+		iterator := module.Module.PortBans.Iterate()
+		var key []byte
+		var value uint8
+
+		for iterator.Next(&key, &value) {
+
+			if value != 0 && len(key) == 2 {
+				port := binary.BigEndian.Uint16(key)
+				result = append(result, "port "+strconv.Itoa(int(port)))
 			}
 
 		}
@@ -139,6 +245,42 @@ func Status() []string {
 		}
 
 	}
+
+	if module.Module.IPv4Sockets != nil {
+
+		iterator := module.Module.IPv4Sockets.Iterate()
+		var key []byte
+		var value uint8
+
+		for iterator.Next(&key, &value) {
+
+			if value != 0 && len(key) == 6 {
+				port := binary.BigEndian.Uint16(key[4:6])
+				result = append(result, "socket "+net.IP(key[0:4]).String()+":"+strconv.Itoa(int(port)))
+			}
+
+		}
+
+	}
+
+	if module.Module.IPv6Sockets != nil {
+
+		iterator := module.Module.IPv6Sockets.Iterate()
+		var key []byte
+		var value uint8
+
+		for iterator.Next(&key, &value) {
+
+			if value != 0 && len(key) == 18 {
+				port := binary.BigEndian.Uint16(key[16:18])
+				result = append(result, "socket "+net.IP(key[0:16]).String()+":"+strconv.Itoa(int(port)))
+			}
+
+		}
+
+	}
+
+	sort.Strings(result)
 
 	return result
 

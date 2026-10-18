@@ -1,3 +1,5 @@
+//go:build guard || guard_openwrt || guard_almalinux || guard_alpinelinux || guard_amazonlinux || guard_antergos || guard_archlinux || guard_cblmariner || guard_centos || guard_debian || guard_fedora || guard_gentoolinux || guard_linuxmint || guard_manjaro || guard_opensuse || guard_oraclelinux || guard_photonos || guard_redhat || guard_rockylinux || guard_trisquel || guard_ubuntu || guard_freebsd || guard_netbsd || guard_openbsd
+
 package module
 
 import "github.com/cilium/ebpf"
@@ -11,7 +13,7 @@ func IsForbiddenSubnet(console *structs.Console, address string, prefix uint8) b
 
 	if types.IsIPv6(address) {
 
-		if prefix >= 8 && prefix <= 128 {
+		if prefix <= 128 {
 
 			if Module.IPv6Bans != nil {
 
@@ -35,7 +37,7 @@ func IsForbiddenSubnet(console *structs.Console, address string, prefix uint8) b
 
 	} else if types.IsIPv4(address) {
 
-		if prefix >= 8 && prefix <= 32 {
+		if prefix <= 32 {
 
 			if Module.IPv4Bans != nil {
 

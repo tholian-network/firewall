@@ -41,11 +41,13 @@ var Module struct {
 	IPv6Bans     *ebpf.Map     `ebpf:"ipv6_bans"`
 	IPv6Warnings *ebpf.Map     `ebpf:"ipv6_warnings"`
 	PortBans     *ebpf.Map     `ebpf:"port_bans"`
+	IPv4Sockets  *ebpf.Map     `ebpf:"ipv4_sockets"`
+	IPv6Sockets  *ebpf.Map     `ebpf:"ipv6_sockets"`
 }
 
 func probe() bool {
 
-	if Module.Program == nil || Module.PortBans == nil {
+	if Module.Program == nil || Module.PortBans == nil || Module.IPv4Sockets == nil || Module.IPv6Sockets == nil {
 		return false
 	}
 
@@ -63,9 +65,14 @@ func probe() bool {
 
 func Init(console *structs.Console) {
 
+	if Loaded == true {
+		Close()
+	}
+
 	Links = make(map[string]*link.Link)
 
 	Loaded = false
+	LoadError = nil
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		console.Warn("adapters/ebpf: " + err.Error())
@@ -156,6 +163,16 @@ func Close() {
 	if Module.PortBans != nil {
 		Module.PortBans.Close()
 		Module.PortBans = nil
+	}
+
+	if Module.IPv4Sockets != nil {
+		Module.IPv4Sockets.Close()
+		Module.IPv4Sockets = nil
+	}
+
+	if Module.IPv6Sockets != nil {
+		Module.IPv6Sockets.Close()
+		Module.IPv6Sockets = nil
 	}
 
 	Loaded = false

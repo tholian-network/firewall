@@ -59,6 +59,13 @@ func forbidHostAndPort(console *structs.Console, chain string, address string, p
 
 }
 
+func IsForbiddenSocket(console *structs.Console, address string, port uint16) bool {
+
+	return isForbiddenHostAndPort(console, "INPUT", address, port) ||
+		isForbiddenHostAndPort(console, "OUTPUT", address, port)
+
+}
+
 func permitHostAndPort(console *structs.Console, chain string, address string, port uint16) bool {
 
 	program, addr := resolveProgram(address)

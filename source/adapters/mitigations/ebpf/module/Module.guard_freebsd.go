@@ -15,5 +15,6 @@ var Module struct {
 	IPv6Bans     *ebpf.Map     `ebpf:"ipv6_bans"`
 	IPv6Warnings *ebpf.Map     `ebpf:"ipv6_warnings"`
 	PortBans     *ebpf.Map     `ebpf:"port_bans"`
+	IPv4Sockets  *ebpf.Map     `ebpf:"ipv4_sockets"`
+	IPv6Sockets  *ebpf.Map     `ebpf:"ipv6_sockets"`
 }
-

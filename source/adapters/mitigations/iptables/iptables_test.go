@@ -3,6 +3,7 @@ package iptables
 import "testing"
 import "os"
 import "tholian-firewall/structs"
+import "tholian-firewall/types"
 import "path/filepath"
 import "strconv"
 import "strings"
@@ -153,8 +154,88 @@ func TestForbidPortUsesFamilies(t *testing.T) {
 		}
 	}
 
-	if added != 4 {
-		t.Fatalf("expected 4 port rules, got %d: %v", added, lines)
+	if added != 8 {
+		t.Fatalf("expected 8 port rules, got %d: %v", added, lines)
+	}
+
+	for _, want := range []string{
+		"INPUT -p udp --sport 1338 -j DROP",
+		"INPUT -p udp --dport 1338 -j DROP",
+		"INPUT -p tcp --sport 1338 -j DROP",
+		"INPUT -p tcp --dport 1338 -j DROP",
+		"OUTPUT -p udp --sport 1338 -j DROP",
+		"OUTPUT -p udp --dport 1338 -j DROP",
+		"OUTPUT -p tcp --sport 1338 -j DROP",
+		"OUTPUT -p tcp --dport 1338 -j DROP",
+	} {
+
+		found := false
+
+		for l := 0; l < len(lines); l++ {
+			if strings.HasPrefix(lines[l], "-A "+want) {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			t.Errorf("missing port rule %q: %v", want, lines)
+		}
+
+	}
+
+}
+
+func TestForbidConnectionExactSocket(t *testing.T) {
+
+	logPath := filepath.Join(t.TempDir(), "commands.log")
+	configureIptables(fakeIptables(t, logPath, 1))
+
+	connection := types.NewConnection()
+	connection.SetType("client")
+	connection.SetTarget(types.NewSocket("1.3.3.7", 1338))
+
+	if ForbidConnection(test_console, connection) == false {
+		t.Fatal("ForbidConnection returned false")
+	}
+
+	lines := readFakeLog(t, logPath)
+
+	for _, want := range []string{
+		"-A OUTPUT -p udp -d 1.3.3.7 --dport 1338 -j DROP",
+		"-A OUTPUT -p tcp -d 1.3.3.7 --dport 1338 -j DROP",
+	} {
+
+		found := false
+
+		for l := 0; l < len(lines); l++ {
+			if lines[l] == want {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			t.Errorf("missing exact socket rule %q: %v", want, lines)
+		}
+
+	}
+
+	for l := 0; l < len(lines); l++ {
+		if lines[l] == "-A OUTPUT -d 1.3.3.7 -j DROP" {
+			t.Fatal("host+port ban over-banned the whole address")
+		}
+	}
+
+}
+
+func TestIsForbiddenSocket(t *testing.T) {
+
+	logPath := filepath.Join(t.TempDir(), "commands.log")
+	configureIptables(fakeIptables(t, logPath, 0))
+
+	if IsForbiddenSocket(test_console, "1.3.3.7", 1338) == false {
+		t.Fatal("IsForbiddenSocket returned false")
 	}
 
 }

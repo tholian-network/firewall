@@ -40,7 +40,23 @@ func IsForbiddenPort(console *structs.Console, port uint16) bool {
 	return false
 }
 
+func ForbidSocket(console *structs.Console, address string, port uint16) bool {
+	return false
+}
+
+func PermitSocket(console *structs.Console, address string, port uint16) bool {
+	return false
+}
+
+func IsForbiddenSocket(console *structs.Console, address string, port uint16) bool {
+	return false
+}
+
 func AttachAll(console *structs.Console) int {
+	return 0
+}
+
+func DetachAll(console *structs.Console) int {
 	return 0
 }
 

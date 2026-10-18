@@ -41,6 +41,6 @@ func PermitDomain(console *structs.Console, domain string) bool {
 		delete(Hosts, domain)
 	}
 
-	return saveHosts(console)
+	return save_hosts(console)
 
 }

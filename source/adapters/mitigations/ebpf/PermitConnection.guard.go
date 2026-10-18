@@ -1,4 +1,4 @@
-//go:build (guard || guard_openwrt || guard_almalinux || guard_alpinelinux || guard_amazonlinux || guard_antergos || guard_archlinux || guard_cblmariner || guard_centos || guard_debian || guard_fedora || guard_gentoolinux || guard_linuxmint || guard_manjaro || guard_opensuse || guard_oraclelinux || guard_photonos || guard_redhat || guard_rockylinux || guard_trisquel || guard_ubuntu)
+//go:build guard || guard_openwrt || guard_almalinux || guard_alpinelinux || guard_amazonlinux || guard_antergos || guard_archlinux || guard_cblmariner || guard_centos || guard_debian || guard_fedora || guard_gentoolinux || guard_linuxmint || guard_manjaro || guard_opensuse || guard_oraclelinux || guard_photonos || guard_redhat || guard_rockylinux || guard_trisquel || guard_ubuntu
 
 package ebpf
 
@@ -7,93 +7,79 @@ import "tholian-firewall/structs"
 import "tholian-firewall/types"
 import "strconv"
 
-func PermitConnection(console *structs.Console, connection types.Connection) bool {
+func permitEndpoint(console *structs.Console, socket types.Socket) bool {
 
-	var result bool = false
+	if socket.IsAny() {
 
-	if SUPPORTED == true {
+		if socket.HasPort() {
 
-		result_source := false
-		result_target := false
-
-		if connection.Type == "client" || connection.Type == "peer" {
-
-			// local client is connecting to remote server
-
-			if connection.Target.Host == "*" {
-
-				if connection.Target.Port != 0 {
-
-					if module.IsForbiddenPort(console, connection.Target.Port) {
-						console.Info("adapters/ebpf: Permit Connection \"*:" + strconv.FormatUint(uint64(connection.Target.Port), 10) + "\"")
-						result_target = module.PermitPort(console, connection.Target.Port)
-					} else {
-						result_target = true
-					}
-
-				}
-
-			} else if connection.Target.Host != ".arpa" {
-
-				if module.IsForbiddenAddress(console, connection.Target.Host) {
-					console.Info("adapters/ebpf: Permit Connection \"" + connection.Target.Host + ":*\"")
-					result_target = module.PermitAddress(console, connection.Target.Host)
-				} else {
-					result_target = true
-				}
-
+			if module.IsForbiddenPort(console, socket.Port) == false {
+				return true
 			}
+
+			console.Info("adapters/ebpf: Permit Connection \"*:" + strconv.FormatUint(uint64(socket.Port), 10) + "\"")
+
+			return module.PermitPort(console, socket.Port)
 
 		}
 
-		if connection.Type == "server" || connection.Type == "peer" {
-
-			// remote client is connecting to local server
-
-			if connection.Source.Host == "*" {
-
-				if connection.Source.Port != 0 {
-
-					if module.IsForbiddenPort(console, connection.Source.Port) {
-						console.Info("adapters/ebpf: Permit Connection \"*:" + strconv.FormatUint(uint64(connection.Source.Port), 10) + "\"")
-						result_source = module.PermitPort(console, connection.Source.Port)
-					} else {
-						result_source = true
-					}
-
-				}
-
-			} else if connection.Source.Host != ".arpa" {
-
-				if module.IsForbiddenAddress(console, connection.Source.Host) {
-					console.Info("adapters/ebpf: Permit Connection \"" + connection.Source.Host + ":*\"")
-					result_source = module.PermitAddress(console, connection.Source.Host)
-				} else {
-					result_source = true
-				}
-
-			}
-
-		}
-
-		if connection.Type == "client" {
-
-			result = result_target
-
-		} else if connection.Type == "server" {
-
-			result = result_source
-
-		} else if connection.Type == "peer" {
-
-			if result_source == true && result_target == true {
-				result = true
-			}
-
-		}
+		return false
 
 	}
 
-	return result
+	if socket.HasHost() {
+
+		if socket.HasPort() {
+
+			if module.IsForbiddenSocket(console, socket.Host, socket.Port) == false {
+				return true
+			}
+
+			console.Info("adapters/ebpf: Permit Connection \"" + socket.Host + ":" + strconv.FormatUint(uint64(socket.Port), 10) + "\"")
+
+			return module.PermitSocket(console, socket.Host, socket.Port)
+
+		}
+
+		if module.IsForbiddenAddress(console, socket.Host) == false {
+			return true
+		}
+
+		console.Info("adapters/ebpf: Permit Connection \"" + socket.Host + ":*\"")
+
+		return module.PermitAddress(console, socket.Host)
+
+	}
+
+	return false
+
+}
+
+func PermitConnection(console *structs.Console, connection types.Connection) bool {
+
+	if SUPPORTED == false {
+		return false
+	}
+
+	result_source := false
+	result_target := false
+
+	if connection.IsClient() || connection.IsPeer() {
+		result_target = permitEndpoint(console, connection.Target)
+	}
+
+	if connection.IsServer() || connection.IsPeer() {
+		result_source = permitEndpoint(console, connection.Source)
+	}
+
+	if connection.IsClient() {
+		return result_target
+	} else if connection.IsServer() {
+		return result_source
+	} else if connection.IsPeer() {
+		return result_source && result_target
+	}
+
+	return false
 
 }

@@ -7,7 +7,7 @@ func subnetSpec(address string, prefix uint8) (string, string) {
 
 	program, addr := resolveProgram(address)
 
-	if program == "" || prefix == 0 {
+	if program == "" {
 		return "", ""
 	}
 

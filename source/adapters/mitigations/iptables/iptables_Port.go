@@ -14,14 +14,18 @@ func isForbiddenPort(console *structs.Console, chain string, port uint16) bool {
 	if chain == "INPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return ruleExists(console, program, "-C", "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				ruleExists(console, program, "-C", "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+			return ruleExists(console, program, "-C", "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") ||
+				ruleExists(console, program, "-C", "INPUT", "-p", "udp", "--dport", value, "-j", "DROP") ||
+				ruleExists(console, program, "-C", "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP") ||
+				ruleExists(console, program, "-C", "INPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
 	} else if chain == "OUTPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return ruleExists(console, program, "-C", "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+			return ruleExists(console, program, "-C", "OUTPUT", "-p", "udp", "--sport", value, "-j", "DROP") ||
+				ruleExists(console, program, "-C", "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") ||
+				ruleExists(console, program, "-C", "OUTPUT", "-p", "tcp", "--sport", value, "-j", "DROP") ||
 				ruleExists(console, program, "-C", "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
@@ -43,13 +47,17 @@ func forbidPort(console *structs.Console, chain string, port uint16) bool {
 
 		return runForFamilies(func(program string) bool {
 			return addRuleOnce(console, program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				addRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+				addRuleOnce(console, program, "INPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "INPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
 	} else if chain == "OUTPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return addRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+			return addRuleOnce(console, program, "OUTPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				addRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--sport", value, "-j", "DROP") &&
 				addRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
@@ -71,13 +79,17 @@ func permitPort(console *structs.Console, chain string, port uint16) bool {
 
 		return runForFamilies(func(program string) bool {
 			return deleteRuleOnce(console, program, "INPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
-				deleteRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP")
+				deleteRuleOnce(console, program, "INPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "INPUT", "-p", "tcp", "--sport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "INPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 
 	} else if chain == "OUTPUT" {
 
 		return runForFamilies(func(program string) bool {
-			return deleteRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+			return deleteRuleOnce(console, program, "OUTPUT", "-p", "udp", "--sport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "OUTPUT", "-p", "udp", "--dport", value, "-j", "DROP") &&
+				deleteRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--sport", value, "-j", "DROP") &&
 				deleteRuleOnce(console, program, "OUTPUT", "-p", "tcp", "--dport", value, "-j", "DROP")
 		})
 

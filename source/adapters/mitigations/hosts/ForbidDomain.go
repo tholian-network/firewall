@@ -25,6 +25,6 @@ func ForbidDomain(console *structs.Console, domain string) bool {
 
 	Hosts[domain] = []string{sinkIPv4, sinkIPv6}
 
-	return saveHosts(console)
+	return save_hosts(console)
 
 }
