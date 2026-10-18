@@ -27,7 +27,7 @@ func Search(console *structs.Console, target string) []string {
 
 		subnet := insights.Internet.Search(target)
 
-		if subnet.Address != "" {
+		if subnet.IsValid() {
 			result = append(result, subnet.Name+" "+subnet.Address+"/"+strconv.FormatUint(uint64(subnet.Prefix), 10)+" "+subnet.Country)
 		}
 

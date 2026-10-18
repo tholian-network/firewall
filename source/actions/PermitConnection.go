@@ -2,7 +2,6 @@ package actions
 
 import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
-import "tholian-firewall/types"
 
 func PermitConnection(console *structs.Console, search matchers.Connection) bool {
 
@@ -10,7 +9,7 @@ func PermitConnection(console *structs.Console, search matchers.Connection) bool
 
 	console.Group("actions/PermitConnection")
 
-	if types.IsDomain(search.Socket.Host) == true {
+	if search.IsDomain() == true {
 
 		result = permitDomain(console, search.Socket.Host)
 

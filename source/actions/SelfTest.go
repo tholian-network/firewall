@@ -76,6 +76,26 @@ func SelfTest(console *structs.Console) bool {
 		result = false
 	}
 
+	if ebpf.ForbidSocket(console, "1.3.3.7", 1338) == false {
+		console.Error("forbid socket failed")
+		result = false
+	}
+
+	if ebpf.IsForbiddenSocket(console, "1.3.3.7", 1338) == false {
+		console.Error("is forbidden socket failed")
+		result = false
+	}
+
+	if ebpf.PermitSocket(console, "1.3.3.7", 1338) == false {
+		console.Error("permit socket failed")
+		result = false
+	}
+
+	if ebpf.IsForbiddenSocket(console, "1.3.3.7", 1338) == true {
+		console.Error("socket still forbidden after permit")
+		result = false
+	}
+
 	if ebpf.ForbidAddress(console, "evil.example") == false {
 		console.Error("forbid domain failed")
 		result = false
@@ -103,6 +123,8 @@ func SelfTest(console *structs.Console) bool {
 		console.Error("no network interface could be attached")
 		result = false
 	}
+
+	ebpf.DetachAll(console)
 
 	console.GroupEndResult(result, "actions/SelfTest")
 

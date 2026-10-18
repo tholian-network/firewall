@@ -9,29 +9,35 @@ func Check(console *structs.Console, target string) bool {
 
 	parsed := ParseTarget(target)
 
-	if parsed.Kind == "connection" {
+	if parsed.IsConnection() {
 
-		if parsed.Connection.Socket.Host != "" && parsed.Connection.Socket.Host != "any" {
+		if parsed.Connection.HasHost() && parsed.Connection.HasPort() {
+			if isForbiddenSocket(console, parsed.Connection.Socket.Host, parsed.Connection.Socket.Port) == true {
+				result = true
+			}
+		}
+
+		if result == false && parsed.Connection.HasHost() {
 			if isForbiddenAddress(console, parsed.Connection.Socket.Host) == true {
 				result = true
 			}
 		}
 
-		if result == false && parsed.Connection.Socket.Port != 0 {
+		if result == false && parsed.Connection.HasPort() {
 			if isForbiddenPort(console, parsed.Connection.Socket.Port) == true {
 				result = true
 			}
 		}
 
-	} else if parsed.Kind == "domain" {
+	} else if parsed.IsDomain() {
 
 		if isForbiddenDomain(console, parsed.Domain) == true {
 			result = true
 		}
 
-	} else if parsed.Kind == "network" {
+	} else if parsed.IsNetwork() {
 
-		if parsed.Network.Subnet != "" && parsed.Network.Subnet != "any" {
+		if parsed.Network.HasSubnet() {
 
 			subnet := structs.ToSubnet(parsed.Network.Subnet)
 
@@ -43,7 +49,7 @@ func Check(console *structs.Console, target string) bool {
 
 			}
 
-		} else if parsed.Network.Name != "" && parsed.Network.Name != "any" {
+		} else if parsed.Network.HasName() {
 
 			network := insights.Internet.SearchASN(parsed.Network.Name)
 

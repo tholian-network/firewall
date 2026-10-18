@@ -18,7 +18,7 @@ func ForbidNetworks(console *structs.Console, searches []matchers.Network) bool 
 
 		search := searches[s]
 
-		if search.Name != "" && search.Name != "any" {
+		if search.HasName() {
 
 			network := insights.Internet.SearchASN(search.Name)
 
@@ -32,7 +32,7 @@ func ForbidNetworks(console *structs.Console, searches []matchers.Network) bool 
 
 			}
 
-		} else if search.Subnet != "" && search.Subnet != "any" {
+		} else if search.HasSubnet() {
 
 			subnet := structs.ToSubnet(search.Subnet)
 
@@ -50,7 +50,7 @@ func ForbidNetworks(console *structs.Console, searches []matchers.Network) bool 
 
 	}
 
-	result = succeeded == total
+	result = total > 0 && succeeded == total
 
 	console.Log("Forbidden " + strconv.Itoa(succeeded) + "/" + strconv.Itoa(total) + " Networks")
 	console.GroupEndResult(result, "actions/ForbidNetworks")

@@ -2,7 +2,6 @@ package actions
 
 import "tholian-firewall/structs"
 import "tholian-firewall/matchers"
-import "tholian-firewall/types"
 import "strconv"
 
 func ForbidConnections(console *structs.Console, searches []matchers.Connection) bool {
@@ -18,7 +17,7 @@ func ForbidConnections(console *structs.Console, searches []matchers.Connection)
 
 		search := searches[s]
 
-		if types.IsDomain(search.Socket.Host) == true {
+		if search.IsDomain() == true {
 
 			total = total + 1
 
@@ -44,7 +43,7 @@ func ForbidConnections(console *structs.Console, searches []matchers.Connection)
 
 	}
 
-	result = succeeded == total
+	result = total > 0 && succeeded == total
 
 	console.Log("Forbidden " + strconv.Itoa(succeeded) + "/" + strconv.Itoa(total) + " Connections")
 	console.GroupEndResult(result, "actions/ForbidConnections")

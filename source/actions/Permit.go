@@ -6,11 +6,11 @@ func Permit(console *structs.Console, target string) bool {
 
 	parsed := ParseTarget(target)
 
-	if parsed.Kind == "network" {
+	if parsed.IsNetwork() {
 		return PermitNetwork(console, parsed.Network)
-	} else if parsed.Kind == "connection" {
+	} else if parsed.IsConnection() {
 		return PermitConnection(console, parsed.Connection)
-	} else if parsed.Kind == "domain" {
+	} else if parsed.IsDomain() {
 		return permitDomain(console, parsed.Domain)
 	}
 

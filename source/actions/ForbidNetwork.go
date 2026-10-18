@@ -8,7 +8,7 @@ func ForbidNetwork(console *structs.Console, search matchers.Network) bool {
 
 	var result bool = false
 
-	if search.Name != "" && search.Name != "any" {
+	if search.HasName() {
 
 		network := insights.Internet.SearchASN(search.Name)
 
@@ -20,7 +20,7 @@ func ForbidNetwork(console *structs.Console, search matchers.Network) bool {
 
 		}
 
-	} else if search.Subnet != "" && search.Subnet != "any" {
+	} else if search.HasSubnet() {
 
 		subnet := structs.ToSubnet(search.Subnet)
 

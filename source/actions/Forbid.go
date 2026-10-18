@@ -6,11 +6,11 @@ func Forbid(console *structs.Console, target string) bool {
 
 	parsed := ParseTarget(target)
 
-	if parsed.Kind == "network" {
+	if parsed.IsNetwork() {
 		return ForbidNetwork(console, parsed.Network)
-	} else if parsed.Kind == "connection" {
+	} else if parsed.IsConnection() {
 		return ForbidConnection(console, parsed.Connection)
-	} else if parsed.Kind == "domain" {
+	} else if parsed.IsDomain() {
 		return forbidDomain(console, parsed.Domain)
 	}
 

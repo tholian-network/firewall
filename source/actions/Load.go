@@ -2,11 +2,8 @@ package actions
 
 import "tholian-firewall/structs"
 import "os"
-import "strings"
 
 func Load(console *structs.Console, path string) bool {
-
-	var result bool = true
 
 	buffer, err1 := os.ReadFile(path)
 
@@ -15,38 +12,6 @@ func Load(console *structs.Console, path string) bool {
 		return false
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(buffer)), "\n")
-
-	for l := 0; l < len(lines); l++ {
-
-		line := strings.TrimSpace(lines[l])
-
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		fields := strings.Fields(line)
-
-		if len(fields) == 2 {
-
-			if fields[0] == "forbid" {
-				if Forbid(console, fields[1]) == false {
-					result = false
-				}
-			} else if fields[0] == "permit" {
-				if Permit(console, fields[1]) == false {
-					result = false
-				}
-			} else {
-				result = false
-			}
-
-		} else {
-			result = false
-		}
-
-	}
-
-	return result
+	return load_rules(console, string(buffer), Forbid, Permit)
 
 }

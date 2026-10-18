@@ -7,61 +7,61 @@ func buildConnection(search matchers.Connection) types.Connection {
 
 	connection := types.NewConnection()
 
-	if search.Type == "client" {
+	if search.Type == matchers.ConnectionTypeClient {
 
-		if search.Socket.Host == "any" {
+		if search.IsWildcard() {
 
 			// Do Nothing
 
 		} else if types.IsIPv6(search.Socket.Host) {
 
-			connection.SetSource(types.NewSocket("[0000:0000:0000:0000:0000:0000:0000:0000]", search.Socket.Port))
+			connection.SetSource(types.NewSocket(types.UnspecifiedIPv6, search.Socket.Port))
 			connection.SetTarget(types.NewSocket(search.Socket.Host, search.Socket.Port))
-			connection.SetType("client")
+			connection.SetType(types.ConnectionTypeClient)
 
 		} else if types.IsIPv4(search.Socket.Host) {
 
-			connection.SetSource(types.NewSocket("0.0.0.0", search.Socket.Port))
+			connection.SetSource(types.NewSocket(types.UnspecifiedIPv4, search.Socket.Port))
 			connection.SetTarget(types.NewSocket(search.Socket.Host, search.Socket.Port))
-			connection.SetType("client")
+			connection.SetType(types.ConnectionTypeClient)
 
 		}
 
-	} else if search.Type == "server" {
+	} else if search.Type == matchers.ConnectionTypeServer {
 
-		if search.Socket.Host == "any" {
+		if search.IsWildcard() {
 
-			if search.Socket.Port != 0 {
+			if search.HasPort() {
 
-				connection.SetSource(types.NewSocket("*", search.Socket.Port))
-				connection.SetTarget(types.NewSocket("*", search.Socket.Port))
-				connection.SetType("server")
+				connection.SetSource(types.NewSocket(types.HostWildcard, search.Socket.Port))
+				connection.SetTarget(types.NewSocket(types.HostWildcard, search.Socket.Port))
+				connection.SetType(types.ConnectionTypeServer)
 
 			}
 
 		} else if types.IsIPv6(search.Socket.Host) {
 
 			connection.SetSource(types.NewSocket(search.Socket.Host, search.Socket.Port))
-			connection.SetTarget(types.NewSocket("[0000:0000:0000:0000:0000:0000:0000:0000]", search.Socket.Port))
-			connection.SetType("server")
+			connection.SetTarget(types.NewSocket(types.UnspecifiedIPv6, search.Socket.Port))
+			connection.SetType(types.ConnectionTypeServer)
 
 		} else if types.IsIPv4(search.Socket.Host) {
 
 			connection.SetSource(types.NewSocket(search.Socket.Host, search.Socket.Port))
-			connection.SetTarget(types.NewSocket("0.0.0.0", search.Socket.Port))
-			connection.SetType("server")
+			connection.SetTarget(types.NewSocket(types.UnspecifiedIPv4, search.Socket.Port))
+			connection.SetType(types.ConnectionTypeServer)
 
 		}
 
-	} else if search.Type == "peer" {
+	} else if search.Type == matchers.ConnectionTypePeer {
 
-		if search.Socket.Host == "any" {
+		if search.IsWildcard() {
 
-			if search.Socket.Port != 0 {
+			if search.HasPort() {
 
-				connection.SetSource(types.NewSocket("*", search.Socket.Port))
-				connection.SetTarget(types.NewSocket("*", search.Socket.Port))
-				connection.SetType("peer")
+				connection.SetSource(types.NewSocket(types.HostWildcard, search.Socket.Port))
+				connection.SetTarget(types.NewSocket(types.HostWildcard, search.Socket.Port))
+				connection.SetType(types.ConnectionTypePeer)
 
 			}
 
@@ -69,7 +69,7 @@ func buildConnection(search matchers.Connection) types.Connection {
 
 			connection.SetSource(types.NewSocket(search.Socket.Host, search.Socket.Port))
 			connection.SetTarget(types.NewSocket(search.Socket.Host, search.Socket.Port))
-			connection.SetType("peer")
+			connection.SetType(types.ConnectionTypePeer)
 
 		}
 

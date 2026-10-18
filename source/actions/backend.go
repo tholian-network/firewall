@@ -150,11 +150,7 @@ func isForbiddenSubnet(console *structs.Console, address string, prefix uint8) b
 
 func isForbiddenSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
-	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return isForbiddenAddress(console, subnet.Address)
-	}
-
-	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
+	if subnet.IsAddress() {
 		return isForbiddenAddress(console, subnet.Address)
 	}
 
@@ -164,11 +160,7 @@ func isForbiddenSubnetOrAddress(console *structs.Console, subnet structs.Subnet)
 
 func forbidSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
-	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return forbidAddress(console, subnet.Address)
-	}
-
-	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
+	if subnet.IsAddress() {
 		return forbidAddress(console, subnet.Address)
 	}
 
@@ -178,11 +170,7 @@ func forbidSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool
 
 func permitSubnetOrAddress(console *structs.Console, subnet structs.Subnet) bool {
 
-	if subnet.Type == "ipv4" && subnet.Prefix == 32 {
-		return permitAddress(console, subnet.Address)
-	}
-
-	if subnet.Type == "ipv6" && subnet.Prefix == 128 {
+	if subnet.IsAddress() {
 		return permitAddress(console, subnet.Address)
 	}
 
@@ -225,6 +213,16 @@ func isForbiddenPort(console *structs.Console, port uint16) bool {
 	}
 
 	return iptables.SUPPORTED == true && iptables.IsForbiddenPort(console, port) == true
+
+}
+
+func isForbiddenSocket(console *structs.Console, address string, port uint16) bool {
+
+	if ebpf.SUPPORTED == true && ebpf.IsForbiddenSocket(console, address, port) == true {
+		return true
+	}
+
+	return iptables.SUPPORTED == true && iptables.IsForbiddenSocket(console, address, port) == true
 
 }
 
