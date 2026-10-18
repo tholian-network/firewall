@@ -1,6 +1,7 @@
 /build/linux
 
 /source/insights/Internet.json
+/source/insights/Internet.json.gz
 
 /logs/test.log
 

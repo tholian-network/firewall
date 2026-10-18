@@ -6,6 +6,7 @@ LOG_FILE="${LOG_DIR}/test.log";
 BUILD_DIR="${ROOT}/build/linux";
 CLI_BINARY="${BUILD_DIR}/tholian-firewall-guard-amd64";
 TEST_BINARY="${BUILD_DIR}/tholian-firewall-tests";
+INSIGHTS="${ROOT}/source/insights/Internet.json.gz";
 
 mkdir -p "${LOG_DIR}" "${BUILD_DIR}";
 
@@ -19,6 +20,13 @@ echo "root: ${ROOT}";
 echo "log:  ${LOG_FILE}";
 echo "================================================================";
 echo "";
+
+if [ ! -f "${INSIGHTS}" ]; then
+	echo "missing embedded Internet dataset: ${INSIGHTS}";
+	echo "the file is not tracked by Git; see README.md (Building / Internet dataset)";
+	echo "RESULT: FAIL";
+	exit 1;
+fi;
 
 if [ "$(id -u)" = "0" ]; then
 	SUDO="";
@@ -41,8 +49,21 @@ check() {
 	fi;
 }
 
-section "Unit tests (go test -tags guard ./...)";
-( cd "${ROOT}/source" && go test -tags guard ./... );
+section "Formatting (gofmt)";
+UNFORMATTED="$(cd "${ROOT}/source" && gofmt -l . 2>&1)";
+if [ -n "${UNFORMATTED}" ]; then
+	echo "${UNFORMATTED}";
+	FAILED=1;
+else
+	echo "gofmt: clean";
+fi;
+
+section "Static analysis (go vet -tags guard)";
+( cd "${ROOT}/source" && go vet -tags guard ./... );
+check;
+
+section "Unit tests (go test -tags guard -race -cover ./...)";
+( cd "${ROOT}/source" && go test -tags guard -race -cover ./... );
 check;
 
 section "Build eBPF module (make.sh ebpf)";
@@ -74,6 +95,12 @@ check;
 section "CLI smoke test (sudo ${CLI_BINARY} search 1.1.1.1)";
 ${SUDO} "${CLI_BINARY}" search "1.1.1.1";
 check;
+
+if [ "${THOLIAN_TEST_ATTACH:-1}" = "1" ]; then
+	section "CLI self test (sudo ${CLI_BINARY} selftest)";
+	${SUDO} "${CLI_BINARY}" selftest;
+	check;
+fi;
 
 echo "";
 echo "================================================================";
