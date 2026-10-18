@@ -17,10 +17,10 @@ func NewConnection() Connection {
 
 	var connection Connection
 
-	connection.Socket.Host = "any"
+	connection.Socket.Host = Any
 	connection.Socket.Port = 0
-	connection.Protocol = "any"
-	connection.Type = "peer"
+	connection.Protocol = ProtocolAny
+	connection.Type = ConnectionTypePeer
 
 	return connection
 
@@ -30,15 +30,31 @@ func ToConnection(value string) Connection {
 
 	var connection Connection
 
-	connection.Socket.Host = "any"
+	connection.Socket.Host = Any
 	connection.Socket.Port = 0
-	connection.Protocol = "any"
-	connection.Type = "peer"
+	connection.Protocol = ProtocolAny
+	connection.Type = ConnectionTypePeer
 
 	connection.Parse(value)
 
 	return connection
 
+}
+
+func (connection *Connection) HasHost() bool {
+	return connection.Socket.Host != "" && connection.Socket.Host != Any && connection.Socket.Host != types.HostWildcard
+}
+
+func (connection *Connection) HasPort() bool {
+	return connection.Socket.Port != 0
+}
+
+func (connection *Connection) IsWildcard() bool {
+	return connection.Socket.Host == Any || connection.Socket.Host == types.HostWildcard
+}
+
+func (connection *Connection) IsDomain() bool {
+	return types.IsDomain(connection.Socket.Host)
 }
 
 func (connection *Connection) IsIdentical(value Connection) bool {
@@ -58,46 +74,38 @@ func (connection *Connection) IsIdentical(value Connection) bool {
 
 func (connection *Connection) IsValid() bool {
 
-	var result bool = false
-
-	if uint(connection.Socket.Port) > 0 && uint(connection.Socket.Port) < 65535 {
-		result = true
+	if connection.Type != ConnectionTypeClient && connection.Type != ConnectionTypeServer && connection.Type != ConnectionTypePeer {
+		return false
 	}
 
-	return result
+	if connection.HasHost() {
+
+		if types.IsIPv4(connection.Socket.Host) == false &&
+			types.IsIPv6(connection.Socket.Host) == false &&
+			types.IsDomain(connection.Socket.Host) == false {
+			return false
+		}
+
+	}
+
+	if connection.Protocol != "" && connection.Protocol != ProtocolAny && connection.Protocol != ProtocolTCP && connection.Protocol != ProtocolUDP {
+		return false
+	}
+
+	return connection.HasHost() || connection.HasPort()
 
 }
 
 func (connection *Connection) Matches(host string, port uint16, protocol string, typ string) bool {
 
-	var matches_host bool = false
-	var matches_port bool = false
-	var matches_protocol bool = false
-	var matches_type bool = false
-
-	if connection.Socket.Host == host {
-		matches_host = true
-	} else if connection.Socket.Host == "any" {
-		matches_host = true
+	if connection.IsValid() == false {
+		return false
 	}
 
-	if connection.Socket.Port == port {
-		matches_port = true
-	} else if connection.Socket.Port == 0 {
-		matches_port = true
-	}
-
-	if connection.Protocol == protocol {
-		matches_protocol = true
-	} else if connection.Protocol == "any" {
-		matches_protocol = true
-	}
-
-	if connection.Type == typ {
-		matches_type = true
-	} else if connection.Type == "any" {
-		matches_type = true
-	}
+	matches_host := connection.HasHost() == false || connection.Socket.Host == host
+	matches_port := connection.HasPort() == false || connection.Socket.Port == port
+	matches_protocol := connection.Protocol == "" || connection.Protocol == ProtocolAny || connection.Protocol == protocol
+	matches_type := connection.Type == Any || connection.Type == typ
 
 	return matches_host && matches_port && matches_protocol && matches_type
 
@@ -112,56 +120,56 @@ func (connection *Connection) Parse(value string) {
 
 		if strings.HasSuffix(port, "TC") {
 
-			connection.SetProtocol("tcp")
-			connection.SetType("client")
+			connection.SetProtocol(ProtocolTCP)
+			connection.SetType(ConnectionTypeClient)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "TP") {
 
-			connection.SetProtocol("tcp")
-			connection.SetType("peer")
+			connection.SetProtocol(ProtocolTCP)
+			connection.SetType(ConnectionTypePeer)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "TS") {
 
-			connection.SetProtocol("tcp")
-			connection.SetType("server")
+			connection.SetProtocol(ProtocolTCP)
+			connection.SetType(ConnectionTypeServer)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "UC") {
 
-			connection.SetProtocol("udp")
-			connection.SetType("client")
+			connection.SetProtocol(ProtocolUDP)
+			connection.SetType(ConnectionTypeClient)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "UP") {
 
-			connection.SetProtocol("udp")
-			connection.SetType("peer")
+			connection.SetProtocol(ProtocolUDP)
+			connection.SetType(ConnectionTypePeer)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "US") {
 
-			connection.SetProtocol("udp")
-			connection.SetType("server")
+			connection.SetProtocol(ProtocolUDP)
+			connection.SetType(ConnectionTypeServer)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "AC") {
 
-			connection.SetProtocol("any")
-			connection.SetType("client")
+			connection.SetProtocol(ProtocolAny)
+			connection.SetType(ConnectionTypeClient)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "AP") {
 
-			connection.SetProtocol("any")
-			connection.SetType("peer")
+			connection.SetProtocol(ProtocolAny)
+			connection.SetType(ConnectionTypePeer)
 			port = port[0 : len(port)-2]
 
 		} else if strings.HasSuffix(port, "AS") {
 
-			connection.SetProtocol("any")
-			connection.SetType("server")
+			connection.SetProtocol(ProtocolAny)
+			connection.SetType(ConnectionTypeServer)
 			port = port[0 : len(port)-2]
 
 		}
@@ -209,15 +217,15 @@ func (connection *Connection) SetHost(value string) {
 			connection.Socket.Host = domain.String()
 		}
 
-	} else if value == "all" || value == "any" || value == "*" {
-		connection.Socket.Host = "any"
+	} else if value == "all" || value == Any || value == types.HostWildcard {
+		connection.Socket.Host = Any
 	}
 
 }
 
 func (connection *Connection) SetPort(value uint16) {
 
-	if value > 0 && value < 65535 {
+	if value > 0 {
 		connection.Socket.Port = value
 	}
 
@@ -225,26 +233,26 @@ func (connection *Connection) SetPort(value uint16) {
 
 func (connection *Connection) SetProtocol(value string) {
 
-	if value == "tcp" {
-		connection.Protocol = "tcp"
-	} else if value == "udp" {
-		connection.Protocol = "udp"
-	} else if value == "any" {
-		connection.Protocol = "any"
+	if value == ProtocolTCP {
+		connection.Protocol = ProtocolTCP
+	} else if value == ProtocolUDP {
+		connection.Protocol = ProtocolUDP
+	} else if value == ProtocolAny {
+		connection.Protocol = ProtocolAny
 	}
 
 }
 
 func (connection *Connection) SetType(value string) {
 
-	if value == "client" {
-		connection.Type = "client"
-	} else if value == "peer" {
-		connection.Type = "peer"
-	} else if value == "server" {
-		connection.Type = "server"
-	} else if value == "any" {
-		connection.Type = "peer"
+	if value == ConnectionTypeClient {
+		connection.Type = ConnectionTypeClient
+	} else if value == ConnectionTypePeer {
+		connection.Type = ConnectionTypePeer
+	} else if value == ConnectionTypeServer {
+		connection.Type = ConnectionTypeServer
+	} else if value == Any {
+		connection.Type = ConnectionTypePeer
 	}
 
 }
@@ -253,33 +261,23 @@ func (connection *Connection) Hash() string {
 
 	var hash string
 
-	if connection.Socket.Port != 0 {
+	if connection.HasPort() {
 
-		if types.IsIPv6(connection.Socket.Host) {
-			hash = connection.Socket.Host
-		} else if types.IsIPv4(connection.Socket.Host) {
-			hash = connection.Socket.Host
-		} else if types.IsDomain(connection.Socket.Host) {
-			hash = connection.Socket.Host
-		} else {
-			hash = connection.Socket.Host
-		}
+		hash = connection.Socket.Host + ":" + strconv.FormatUint(uint64(connection.Socket.Port), 10)
 
-		hash += ":" + strconv.FormatUint(uint64(connection.Socket.Port), 10)
-
-		if connection.Protocol == "tcp" {
+		if connection.Protocol == ProtocolTCP {
 			hash += "T"
-		} else if connection.Protocol == "udp" {
+		} else if connection.Protocol == ProtocolUDP {
 			hash += "U"
-		} else if connection.Protocol == "any" {
+		} else if connection.Protocol == ProtocolAny {
 			hash += "A"
 		}
 
-		if connection.Type == "client" {
+		if connection.Type == ConnectionTypeClient {
 			hash += "C"
-		} else if connection.Type == "peer" {
+		} else if connection.Type == ConnectionTypePeer {
 			hash += "P"
-		} else if connection.Type == "server" {
+		} else if connection.Type == ConnectionTypeServer {
 			hash += "S"
 		}
 

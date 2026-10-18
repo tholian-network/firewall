@@ -2,7 +2,7 @@ package matchers
 
 import "tholian-firewall/types"
 
-func containsSubnet(subnet_a string, subnet_b string) bool {
+func contains_subnet(subnet_a string, subnet_b string) bool {
 
 	var result bool = false
 
@@ -19,16 +19,20 @@ func containsSubnet(subnet_a string, subnet_b string) bool {
 			ipv6_a := types.ParseIPv6(address_a)
 			ipv6_b := types.ParseIPv6(address_b)
 
-			bytes_a = ipv6_a.Bytes(prefix_a)
-			bytes_b = ipv6_b.Bytes(prefix_a)
+			if ipv6_a != nil && ipv6_b != nil {
+				bytes_a = ipv6_a.Bytes(prefix_a)
+				bytes_b = ipv6_b.Bytes(prefix_a)
+			}
 
 		} else if types.IsIPv4(address_a) && types.IsIPv4(address_b) {
 
 			ipv4_a := types.ParseIPv4(address_a)
 			ipv4_b := types.ParseIPv4(address_b)
 
-			bytes_a = ipv4_a.Bytes(prefix_a)
-			bytes_b = ipv4_b.Bytes(prefix_a)
+			if ipv4_a != nil && ipv4_b != nil {
+				bytes_a = ipv4_a.Bytes(prefix_a)
+				bytes_b = ipv4_b.Bytes(prefix_a)
+			}
 
 		}
 

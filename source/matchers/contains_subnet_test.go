@@ -17,8 +17,8 @@ func TestContainsSubnetIPv4(t *testing.T) {
 
 	for _, c := range cases {
 
-		if result := containsSubnet(c.a, c.b); result != c.expected {
-			t.Errorf("containsSubnet(%q, %q) = %v, expected %v", c.a, c.b, result, c.expected)
+		if result := contains_subnet(c.a, c.b); result != c.expected {
+			t.Errorf("contains_subnet(%q, %q) = %v, expected %v", c.a, c.b, result, c.expected)
 		}
 
 	}

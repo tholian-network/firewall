@@ -13,8 +13,8 @@ func NewSubnet() Subnet {
 
 	var subnet Subnet
 
-	subnet.Name = "any"
-	subnet.Subnet = "any"
+	subnet.Name = Any
+	subnet.Subnet = Any
 
 	return subnet
 
@@ -25,15 +25,30 @@ func ToSubnet(value string) Subnet {
 	var subnet Subnet
 
 	if strings.Contains(value, "/") {
-		subnet.Name = "any"
+		subnet.Name = Any
 		subnet.SetSubnet(value)
 	} else {
 		subnet.SetName(value)
-		subnet.Subnet = "any"
 	}
 
 	return subnet
 
+}
+
+func (subnet *Subnet) Kind() Kind {
+	return match_kind(subnet.Name, subnet.Subnet)
+}
+
+func (subnet *Subnet) IsAny() bool {
+	return subnet.Kind() == KindAny
+}
+
+func (subnet *Subnet) HasName() bool {
+	return subnet.Kind() == KindName
+}
+
+func (subnet *Subnet) HasSubnet() bool {
+	return subnet.Kind() == KindSubnet
 }
 
 func (subnet *Subnet) IsIdentical(value Subnet) bool {
@@ -49,32 +64,24 @@ func (subnet *Subnet) IsIdentical(value Subnet) bool {
 }
 
 func (subnet *Subnet) IsValid() bool {
-
-	var result bool = false
-
-	if subnet.Name != "any" || subnet.Subnet != "any" {
-		result = true
-	}
-
-	return result
-
+	return subnet.HasName() || subnet.HasSubnet()
 }
 
 func (subnet *Subnet) Matches(name string, net string) bool {
 
-	var matches_name bool = false
-	var matches_subnet bool = false
-
-	if subnet.Name == name {
-		matches_name = true
-	} else if subnet.Name == "any" {
-		matches_name = true
+	if subnet.Kind() == KindInvalid {
+		return false
 	}
 
-	if subnet.Subnet != "any" && net != "any" && containsSubnet(subnet.Subnet, net) {
-		matches_subnet = true
-	} else if subnet.Subnet == "any" {
-		matches_subnet = true
+	matches_name := true
+	matches_subnet := true
+
+	if subnet.HasName() {
+		matches_name = subnet.Name == name
+	}
+
+	if subnet.HasSubnet() {
+		matches_subnet = net != "" && net != Any && contains_subnet(subnet.Subnet, net)
 	}
 
 	return matches_name && matches_subnet
@@ -83,13 +90,15 @@ func (subnet *Subnet) Matches(name string, net string) bool {
 
 func (subnet *Subnet) SetName(value string) {
 	subnet.Name = strings.TrimSpace(value)
+	subnet.Subnet = Any
 }
 
 func (subnet *Subnet) SetSubnet(value string) {
 
-	address, prefix := toSubnet(value)
+	address, _ := toSubnet(value)
 
-	if address != "" && prefix != 0 {
+	if address != "" {
+		subnet.Name = Any
 		subnet.Subnet = value
 	}
 
@@ -99,11 +108,11 @@ func (subnet *Subnet) Hash() string {
 
 	var hash string
 
-	if subnet.Name != "any" {
+	if subnet.HasName() {
 
 		hash = subnet.Name
 
-	} else if subnet.Subnet != "any" {
+	} else if subnet.HasSubnet() {
 
 		address, prefix := toSubnet(subnet.Subnet)
 
