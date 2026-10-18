@@ -24,6 +24,16 @@ struct ipv6_subnet {
 	__u8  address[16];
 };
 
+struct ipv4_socket {
+	__u8   address[4]; // ipv4 address, network byte order (big endian)
+	__be16 port;       // port number, network byte order (big endian)
+};
+
+struct ipv6_socket {
+	__u8   address[16]; // ipv6 address, network byte order (big endian)
+	__be16 port;        // port number, network byte order (big endian)
+};
+
 // Max usage: ~1MB (1048560 bytes)
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -73,6 +83,22 @@ struct {
 	__type(key, __u16);  // port number, network byte order (big endian)
 	__type(value, __u8); // 1 = banned, 0 = unbanned
 } port_bans SEC(".maps");
+
+// Max usage: ~393KB (393210 bytes)
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 65535);
+	__type(key, struct ipv4_socket); // ipv4 address and port, network byte order
+	__type(value, __u8);            // 1 = banned, 0 = unbanned
+} ipv4_sockets SEC(".maps");
+
+// Max usage: ~1MB (1179630 bytes)
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 65535);
+	__type(key, struct ipv6_socket); // ipv6 address and port, network byte order
+	__type(value, __u8);            // 1 = banned, 0 = unbanned
+} ipv6_sockets SEC(".maps");
 
 
 
@@ -175,6 +201,76 @@ static __always_inline bool is_filtered_port(__u16 port) {
 	blocked_port = bpf_map_lookup_elem(&port_bans, &port);
 
 	if (blocked_port != NULL && *blocked_port != 0) {
+		return true;
+	}
+
+	return false;
+
+}
+
+static __always_inline bool is_filtered_ipv4_socket(struct ipv4_socket *socket) {
+
+	__u8 *banned = NULL;
+
+	banned = bpf_map_lookup_elem(&ipv4_sockets, socket);
+
+	if (banned != NULL && *banned != 0) {
+		return true;
+	}
+
+	return false;
+
+}
+
+static __always_inline bool is_filtered_ipv6_socket(struct ipv6_socket *socket) {
+
+	__u8 *banned = NULL;
+
+	banned = bpf_map_lookup_elem(&ipv6_sockets, socket);
+
+	if (banned != NULL && *banned != 0) {
+		return true;
+	}
+
+	return false;
+
+}
+
+static __always_inline bool is_filtered_ipv4_socket_pair(struct iphdr *ipv4_header, __be16 source_port, __be16 dest_port) {
+
+	struct ipv4_socket source_socket;
+	struct ipv4_socket dest_socket;
+
+	source_socket.port = source_port;
+	dest_socket.port = dest_port;
+
+	memcpy(&source_socket.address, &ipv4_header->saddr, sizeof(source_socket.address));
+	memcpy(&dest_socket.address, &ipv4_header->daddr, sizeof(dest_socket.address));
+
+	if (is_filtered_ipv4_socket(&source_socket) == true) {
+		return true;
+	} else if (is_filtered_ipv4_socket(&dest_socket) == true) {
+		return true;
+	}
+
+	return false;
+
+}
+
+static __always_inline bool is_filtered_ipv6_socket_pair(struct ipv6hdr *ipv6_header, __be16 source_port, __be16 dest_port) {
+
+	struct ipv6_socket source_socket;
+	struct ipv6_socket dest_socket;
+
+	source_socket.port = source_port;
+	dest_socket.port = dest_port;
+
+	memcpy(&source_socket.address, &ipv6_header->saddr.in6_u.u6_addr32, sizeof(source_socket.address));
+	memcpy(&dest_socket.address, &ipv6_header->daddr.in6_u.u6_addr32, sizeof(dest_socket.address));
+
+	if (is_filtered_ipv6_socket(&source_socket) == true) {
+		return true;
+	} else if (is_filtered_ipv6_socket(&dest_socket) == true) {
 		return true;
 	}
 
@@ -337,7 +433,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 	void *data = (void *)(long)ctx->data;
 
 	if (data + sizeof(struct ethhdr) > data_end) {
-		return XDP_DROP;
+		return XDP_PASS;
 	}
 
 	int ethernet_protocol;
@@ -395,7 +491,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 			int length = parse_udphdr(&cursor, data_end, &udp_header);
 			if (length < 0) {
-				return XDP_DROP;
+				return XDP_PASS;
 			}
 
 			__u16 port_source = udp_header->source;
@@ -409,6 +505,10 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 			// local port is filtered
 			if (is_filtered_port(port_dest) == true) {
+				return XDP_DROP;
+			}
+
+			if (is_filtered_ipv4_socket_pair(ipv4_header, port_source, port_dest) == true) {
 				return XDP_DROP;
 			}
 
@@ -440,7 +540,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 			int length = parse_tcphdr(&cursor, data_end, &tcp_header);
 
 			if (length < 0) {
-				return XDP_DROP;
+				return XDP_PASS;
 			}
 
 			if (is_filtered_nmap_tcp_scan(tcp_header) == true) {
@@ -463,7 +563,9 @@ int xdp_prog_main(struct xdp_md *ctx) {
 				return XDP_DROP;
 			}
 
-
+			if (is_filtered_ipv4_socket_pair(ipv4_header, port_source, port_dest) == true) {
+				return XDP_DROP;
+			}
 
 		} else if (protocol == IPPROTO_ICMP) {
 
@@ -524,7 +626,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				int length = parse_udphdr(&cursor, data_end, &udp_header);
 				if (length < 0) {
-					return XDP_DROP;
+					return XDP_PASS;
 				}
 
 				__u16 port_source = udp_header->source;
@@ -541,6 +643,10 @@ int xdp_prog_main(struct xdp_md *ctx) {
 					return XDP_DROP;
 				}
 
+				if (is_filtered_ipv6_socket_pair(ipv6_header, port_source, port_dest) == true) {
+					return XDP_DROP;
+				}
+
 			} else if (protocol == IPPROTO_TCP) {
 
 				struct tcphdr *tcp_header = NULL;
@@ -548,7 +654,7 @@ int xdp_prog_main(struct xdp_md *ctx) {
 				int length = parse_tcphdr(&cursor, data_end, &tcp_header);
 
 				if (length < 0) {
-					return XDP_DROP;
+					return XDP_PASS;
 				}
 
 				if (is_filtered_nmap_tcp_scan(tcp_header) == true) {
@@ -568,6 +674,10 @@ int xdp_prog_main(struct xdp_md *ctx) {
 
 				// local port is filtered
 				if (is_filtered_port(port_dest) == true) {
+					return XDP_DROP;
+				}
+
+				if (is_filtered_ipv6_socket_pair(ipv6_header, port_source, port_dest) == true) {
 					return XDP_DROP;
 				}
 
