@@ -2,7 +2,7 @@
 
 package ebpf
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
 
 func Detach(console *structs.Console, name string) bool {

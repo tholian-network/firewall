@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "path/filepath"
 import "os"
 
@@ -71,4 +71,3 @@ func write_hosts(console *structs.Console, buffer []byte) bool {
 	return true
 
 }
-

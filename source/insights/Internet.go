@@ -1,6 +1,6 @@
 package insights
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 var Internet structs.Internet
 

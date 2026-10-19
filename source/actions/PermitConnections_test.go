@@ -1,7 +1,7 @@
 package actions
 
 import "testing"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func TestPermitConnectionsRejectsEmptyList(t *testing.T) {
 

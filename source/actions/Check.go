@@ -1,7 +1,7 @@
 package actions
 
 import "tholian-firewall/insights"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func Check(console *structs.Console, target string) bool {
 

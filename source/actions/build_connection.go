@@ -1,7 +1,7 @@
 package actions
 
-import "tholian-firewall/matchers"
-import "tholian-firewall/types"
+import "tholian-core/matchers"
+import "tholian-core/types"
 
 func build_connection(search matchers.Connection) types.Connection {
 

@@ -2,7 +2,7 @@
 
 package ebpf
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func ForbidAddress(console *structs.Console, address string) bool {
 	return false

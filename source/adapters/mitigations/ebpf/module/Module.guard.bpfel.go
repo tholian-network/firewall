@@ -5,7 +5,7 @@ package module
 import "github.com/cilium/ebpf"
 import "github.com/cilium/ebpf/link"
 import "github.com/cilium/ebpf/rlimit"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "errors"
 import "strings"
 import "bytes"

@@ -13,4 +13,3 @@ func read_kernel_config(path string) ([]byte, bool) {
 	return buffer, true
 
 }
-

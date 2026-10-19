@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/types"
+import "tholian-core/types"
 import "os"
 import "strings"
 import "sync"

@@ -3,8 +3,8 @@
 package module
 
 import "github.com/cilium/ebpf"
-import "tholian-firewall/structs"
-import "tholian-firewall/types"
+import "tholian-core/structs"
+import "tholian-core/types"
 import "errors"
 
 func PermitSocket(console *structs.Console, address string, port uint16) bool {

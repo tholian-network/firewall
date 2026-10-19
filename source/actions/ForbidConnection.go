@@ -1,7 +1,7 @@
 package actions
 
-import "tholian-firewall/structs"
-import "tholian-firewall/matchers"
+import "tholian-core/structs"
+import "tholian-core/matchers"
 
 func ForbidConnection(console *structs.Console, search matchers.Connection) bool {
 

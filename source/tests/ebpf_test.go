@@ -10,7 +10,7 @@ import "net"
 
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 const (
 	xdpAborted  = 0

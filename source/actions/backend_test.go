@@ -4,7 +4,7 @@ import "testing"
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/hosts"
 import "tholian-firewall/adapters/mitigations/iptables"
-import "tholian-firewall/types"
+import "tholian-core/types"
 
 func disable_backends() func() {
 

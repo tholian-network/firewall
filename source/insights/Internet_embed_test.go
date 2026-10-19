@@ -4,7 +4,7 @@ package insights
 
 import "os"
 import "testing"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func TestEmbeddedInternetDataset(t *testing.T) {
 
@@ -14,7 +14,7 @@ func TestEmbeddedInternetDataset(t *testing.T) {
 
 	console := structs.NewConsole(nil, nil, 0)
 
-	loadInternet(console)
+	load_internet(console)
 
 	if console.HasErrors() == true {
 		t.Fatalf("failed to load the embedded dataset: %v", console.Messages)

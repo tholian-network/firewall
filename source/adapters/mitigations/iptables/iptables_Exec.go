@@ -1,7 +1,7 @@
 package iptables
 
-import "tholian-firewall/structs"
-import "tholian-firewall/types"
+import "tholian-core/structs"
+import "tholian-core/types"
 import "os/exec"
 import "errors"
 import "strings"

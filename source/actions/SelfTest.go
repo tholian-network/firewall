@@ -1,7 +1,7 @@
 package actions
 
 import "tholian-firewall/adapters/mitigations/ebpf"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "strconv"
 
 func SelfTest(console *structs.Console) bool {

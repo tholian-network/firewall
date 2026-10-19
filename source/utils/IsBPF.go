@@ -1,6 +1,6 @@
 package utils
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 var bpf_required_options map[string]string = map[string]string{
 	"CONFIG_CGROUP_BPF":      "y",

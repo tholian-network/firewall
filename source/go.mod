@@ -1,10 +1,15 @@
 module tholian-firewall
 
-go 1.23.0
+go 1.27.1
+
+require (
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+)
 
 require (
 	github.com/cilium/ebpf v0.18.0
-	golang.org/x/term v0.32.0
+	tholian-core v0.0.0
 )
 
-require golang.org/x/sys v0.33.0 // indirect
+replace tholian-core => ../../core/source

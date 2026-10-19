@@ -2,7 +2,7 @@
 
 package ebpf
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func Attach(console *structs.Console, name string) bool {
 

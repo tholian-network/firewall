@@ -2,8 +2,8 @@
 
 package ebpf
 
-import "tholian-firewall/structs"
-import "tholian-firewall/types"
+import "tholian-core/structs"
+import "tholian-core/types"
 
 var SUPPORTED bool
 

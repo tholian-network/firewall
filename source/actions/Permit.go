@@ -1,6 +1,6 @@
 package actions
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func Permit(console *structs.Console, target string) bool {
 

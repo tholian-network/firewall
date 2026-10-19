@@ -1,7 +1,7 @@
 package iptables
 
 import "strconv"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func isForbiddenHostAndPort(console *structs.Console, chain string, address string, port uint16) bool {
 

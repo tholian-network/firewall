@@ -63,4 +63,3 @@ func render_hosts(content string, domains []string) string {
 	return result
 
 }
-

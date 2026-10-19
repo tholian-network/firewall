@@ -58,4 +58,3 @@ func parse_kernel_config(config string) bool {
 	return true
 
 }
-

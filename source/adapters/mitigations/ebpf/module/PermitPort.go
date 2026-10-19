@@ -4,7 +4,7 @@ package module
 
 import "github.com/cilium/ebpf"
 import "errors"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func PermitPort(console *structs.Console, port uint16) bool {
 

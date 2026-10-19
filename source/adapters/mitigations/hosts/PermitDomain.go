@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func PermitDomain(console *structs.Console, domain string) bool {
 

@@ -1,6 +1,6 @@
 package actions
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "os"
 
 func Load(console *structs.Console, path string) bool {

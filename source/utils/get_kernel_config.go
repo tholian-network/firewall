@@ -1,6 +1,6 @@
 package utils
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "os"
 import "strings"
 
@@ -38,4 +38,3 @@ func get_kernel_config(console *structs.Console) []byte {
 	return nil
 
 }
-

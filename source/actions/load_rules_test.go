@@ -1,7 +1,7 @@
 package actions
 
 import "testing"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func example_rule(records *[]string) func(*structs.Console, string) bool {
 

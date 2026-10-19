@@ -3,7 +3,7 @@
 package module
 
 import "github.com/cilium/ebpf"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func ForbidPort(console *structs.Console, port uint16) bool {
 

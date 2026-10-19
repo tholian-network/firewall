@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func isForbiddenDomain(domain string) bool {
 

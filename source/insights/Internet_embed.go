@@ -3,7 +3,7 @@
 package insights
 
 import "bytes"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import _ "embed"
 
 //go:embed Internet.json.gz

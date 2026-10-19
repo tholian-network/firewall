@@ -3,7 +3,7 @@ package actions
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/adapters/mitigations/hosts"
 import "tholian-firewall/adapters/mitigations/iptables"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func Init(console *structs.Console) bool {
 

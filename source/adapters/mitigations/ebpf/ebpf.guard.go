@@ -3,7 +3,7 @@
 package ebpf
 
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 var SUPPORTED bool
 

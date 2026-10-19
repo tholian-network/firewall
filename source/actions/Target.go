@@ -1,7 +1,7 @@
 package actions
 
-import "tholian-firewall/matchers"
-import "tholian-firewall/types"
+import "tholian-core/matchers"
+import "tholian-core/types"
 import "strconv"
 
 type TargetKind uint8

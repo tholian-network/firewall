@@ -1,7 +1,7 @@
 package iptables
 
 import "strconv"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func subnetSpec(address string, prefix uint8) (string, string) {
 

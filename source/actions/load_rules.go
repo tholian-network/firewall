@@ -1,6 +1,6 @@
 package actions
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "fmt"
 import "strings"
 
@@ -63,4 +63,3 @@ func load_rules(console *structs.Console, content string, forbid func(*structs.C
 	return result
 
 }
-

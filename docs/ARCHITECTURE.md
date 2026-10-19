@@ -38,10 +38,6 @@ source/                        Go user space
     iptables/                  iptables/ip6tables fallback
     hosts/                     /etc/hosts fallback (domains)
   insights/                    Embedded "map of the internet" (ASN/subnet data)
-  matchers/                    Parsed user input (Network/Connection/Subnet)
-  structs/                     Rich models (Internet/Network/Subnet) and the
-                               stateful Console/ConsoleMessage log
-  types/                       Primitive types (IPv4/IPv6/Domain/ASN/...)
   tests/                       Integration tests compiled with `go test -c`
   utils/                       Kernel capability detection
 
@@ -49,12 +45,17 @@ docs/                          This documentation
 make.sh, test.sh               Build and test entrypoints
 ```
 
+The `tholian-core` module is expected as a sibling checkout of this repository
+(`../core`, containing `source/go.mod`). It is wired in via the `replace`
+directive in `source/go.mod`; see README.md (Building / tholian-core
+dependency).
+
 ---
 
 ## 3. Runtime data flow
 
 ```
-CLI args -> main.go -> actions.* -> matchers/types/structs
+CLI args -> main.go -> actions.* -> matchers/types/structs (tholian-core)
 
 ... which controls either of ...
 
@@ -325,8 +326,9 @@ Architecture selects little-endian (`module.bpfel`) vs big-endian
 Privileged eBPF behaviour cannot be tested in separate processes because maps
 and XDP links are process-scoped (D10). Therefore:
 
-- Unit tests live next to the code (`types`, `matchers`, `structs`, `insights`,
-  `utils`, `iptables`, `hosts`, and the pure eBPF key helpers).
+- Unit tests live next to the code in the `tholian-core` module (`types`,
+  `matchers`, `structs`) and in this repository (`insights`, `utils`, `iptables`,
+  `hosts`, and the pure eBPF key helpers).
 - Integration tests live in `source/tests/` and are compiled into **one**
   binary:
   ```bash

@@ -1,6 +1,6 @@
 package module
 
-import "tholian-firewall/types"
+import "tholian-core/types"
 import "bytes"
 import "encoding/binary"
 import "net"

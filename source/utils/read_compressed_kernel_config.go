@@ -30,4 +30,3 @@ func read_compressed_kernel_config(path string) ([]byte, bool) {
 	return config, true
 
 }
-

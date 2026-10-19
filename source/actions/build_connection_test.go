@@ -1,7 +1,7 @@
 package actions
 
 import "testing"
-import "tholian-firewall/matchers"
+import "tholian-core/matchers"
 
 func TestBuildConnectionClientIPv4(t *testing.T) {
 

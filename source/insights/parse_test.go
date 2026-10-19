@@ -4,7 +4,7 @@ import "bytes"
 import "compress/gzip"
 import "encoding/json"
 import "testing"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func example_internet() []byte {
 

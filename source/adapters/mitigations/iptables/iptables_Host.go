@@ -1,7 +1,7 @@
 package iptables
 
-import "tholian-firewall/types"
-import "tholian-firewall/structs"
+import "tholian-core/types"
+import "tholian-core/structs"
 
 func isForbiddenHost(console *structs.Console, chain string, address string) bool {
 

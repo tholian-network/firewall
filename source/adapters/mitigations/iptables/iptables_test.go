@@ -2,8 +2,8 @@ package iptables
 
 import "testing"
 import "os"
-import "tholian-firewall/structs"
-import "tholian-firewall/types"
+import "tholian-core/structs"
+import "tholian-core/types"
 import "path/filepath"
 import "strconv"
 import "strings"

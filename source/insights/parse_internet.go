@@ -1,7 +1,7 @@
 package insights
 
 import "compress/gzip"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "encoding/json"
 import "io"
 

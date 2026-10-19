@@ -3,8 +3,8 @@
 package module
 
 import "github.com/cilium/ebpf"
-import "tholian-firewall/structs"
-import "tholian-firewall/types"
+import "tholian-core/structs"
+import "tholian-core/types"
 
 func ForbidSubnet(console *structs.Console, address string, prefix uint8) bool {
 

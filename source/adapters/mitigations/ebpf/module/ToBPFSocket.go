@@ -1,7 +1,7 @@
 package module
 
 import "encoding/binary"
-import "tholian-firewall/types"
+import "tholian-core/types"
 
 func ToBPFIPv4Socket(address string, port uint16) []byte {
 

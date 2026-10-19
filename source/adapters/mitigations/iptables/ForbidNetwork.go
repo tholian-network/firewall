@@ -1,6 +1,6 @@
 package iptables
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "strconv"
 
 func ForbidNetwork(console *structs.Console, network structs.Network) bool {

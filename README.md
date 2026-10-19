@@ -52,6 +52,23 @@ The Tholian Firewall takes a different stance:
 
 ## Building
 
+### tholian-core dependency
+
+The shared structs, matchers, and types live in the separate `tholian-core`
+module. This repository expects it to be checked out next to the firewall
+folder:
+
+```text
+tholian-network/
+├── core/       # tholian-core module
+└── firewall/   # this repository
+```
+
+`source/go.mod` resolves the dependency with
+`replace tholian-core => ../../core/source`, which is relative to the `source/`
+directory. If your checkout uses a different directory name or location, adjust
+that `replace` directive accordingly.
+
 ### eBPF module
 
 ```bash
@@ -150,7 +167,7 @@ complete and can be serialized later:
 import "tholian-firewall/actions"
 import "tholian-firewall/adapters/mitigations/ebpf"
 import "tholian-firewall/insights"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "os"
 
 func main() {

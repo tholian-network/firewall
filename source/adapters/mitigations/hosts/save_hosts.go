@@ -1,6 +1,6 @@
 package hosts
 
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "os"
 import "sort"
 
@@ -29,4 +29,3 @@ func save_hosts(console *structs.Console) bool {
 	return write_hosts(console, []byte(render_hosts(content, domains)))
 
 }
-

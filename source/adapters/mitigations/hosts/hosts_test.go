@@ -2,7 +2,7 @@ package hosts
 
 import "testing"
 import "os"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "path/filepath"
 import "strings"
 

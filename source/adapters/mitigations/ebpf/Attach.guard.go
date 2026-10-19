@@ -4,7 +4,7 @@ package ebpf
 
 import "github.com/cilium/ebpf/link"
 import "tholian-firewall/adapters/mitigations/ebpf/module"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 import "net"
 
 func Attach(console *structs.Console, name string) bool {

@@ -1,8 +1,8 @@
 package actions
 
 import "tholian-firewall/insights"
-import "tholian-firewall/matchers"
-import "tholian-firewall/structs"
+import "tholian-core/matchers"
+import "tholian-core/structs"
 
 func PermitNetwork(console *structs.Console, search matchers.Network) bool {
 

@@ -3,7 +3,7 @@ package actions
 import "testing"
 import "strings"
 import "tholian-firewall/insights"
-import "tholian-firewall/structs"
+import "tholian-core/structs"
 
 func TestSearchWithFixture(t *testing.T) {
 
