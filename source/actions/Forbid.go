@@ -1,10 +1,11 @@
 package actions
 
+import "tholian-firewall/internal/types"
 import "tholian-core/structs"
 
 func Forbid(console *structs.Console, target string) bool {
 
-	parsed := ParseTarget(target)
+	parsed := types.ParseTarget(target)
 
 	if parsed.IsNetwork() {
 		return ForbidNetwork(console, parsed.Network)

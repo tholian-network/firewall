@@ -1,4 +1,4 @@
-package actions
+package types
 
 import "tholian-core/matchers"
 import "tholian-core/types"

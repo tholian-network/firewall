@@ -1,4 +1,4 @@
-package actions
+package types
 
 import "testing"
 import "strings"

@@ -1,13 +1,14 @@
 package actions
 
 import "tholian-firewall/insights"
+import "tholian-firewall/internal/types"
 import "tholian-core/structs"
 
 func Check(console *structs.Console, target string) bool {
 
 	var result bool = false
 
-	parsed := ParseTarget(target)
+	parsed := types.ParseTarget(target)
 
 	if parsed.IsConnection() {
 

@@ -1,10 +1,10 @@
-package actions
+package rules
 
 import "tholian-core/structs"
 import "fmt"
 import "strings"
 
-func load_rules(console *structs.Console, content string, forbid func(*structs.Console, string) bool, permit func(*structs.Console, string) bool) bool {
+func Load(console *structs.Console, content string, forbid func(*structs.Console, string) bool, permit func(*structs.Console, string) bool) bool {
 
 	var result bool = true
 
@@ -36,7 +36,7 @@ func load_rules(console *structs.Console, content string, forbid func(*structs.C
 
 			if len(fields) != 2 || (fields[0] != "forbid" && fields[0] != "permit") {
 
-				console.Error(fmt.Sprintf("actions/Load: invalid rule on line %d: %q", l+1, statement))
+				console.Error(fmt.Sprintf("rules/Load: invalid rule on line %d: %q", l+1, statement))
 				result = false
 				continue
 

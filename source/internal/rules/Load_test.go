@@ -1,4 +1,4 @@
-package actions
+package rules
 
 import "testing"
 import "tholian-core/structs"
@@ -28,8 +28,8 @@ permit 8.8.8.8;
 forbid evil.example; permit 1.1.1.1;
 `
 
-	if load_rules(console, content, example_rule(&forbidden), example_rule(&permitted)) == false {
-		t.Fatalf("load_rules returned false: %v", console.Messages)
+	if Load(console, content, example_rule(&forbidden), example_rule(&permitted)) == false {
+		t.Fatalf("Load returned false: %v", console.Messages)
 	}
 
 	if len(forbidden) != 3 {
@@ -70,8 +70,8 @@ forbid;
 forbid 1.3.3.7 extra;
 `
 
-	if load_rules(console, content, callback, callback) == true {
-		t.Fatal("load_rules accepted invalid rules")
+	if Load(console, content, callback, callback) == true {
+		t.Fatal("Load accepted invalid rules")
 	}
 
 	if called == true {
@@ -92,8 +92,8 @@ func TestLoadRulesPropagatesFailures(t *testing.T) {
 		return false
 	}
 
-	if load_rules(console, "forbid 1.3.3.7;", failing, failing) == true {
-		t.Fatal("load_rules ignored a failed rule")
+	if Load(console, "forbid 1.3.3.7;", failing, failing) == true {
+		t.Fatal("Load ignored a failed rule")
 	}
 
 }
