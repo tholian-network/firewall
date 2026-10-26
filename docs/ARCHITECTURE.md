@@ -41,8 +41,9 @@ source/                        Go user space
   tests/                       Integration tests compiled with `go test -c`
   utils/                       Kernel capability detection
 
+e2e-tests/                     Standalone CLI end-to-end tests
 docs/                          This documentation
-make.sh, test.sh               Build and test entrypoints
+Makefile                       Build and test entrypoints
 ```
 
 The `tholian-core` module is expected as a sibling checkout of this repository
@@ -294,9 +295,9 @@ use eBPF then iptables; domains use eBPF then hosts.
 
 ## 8. Build system and tags
 
-The `make.sh` builds the system with the correct build tags.
+The `Makefile` builds the system with the correct build tags.
 
-The `build_ebpf()` method:
+`make build-ebpf`:
 
 1. `clang -S -emit-llvm` builds `module.ll`
 2. `llc -march=bpfel` and `-march=bpfeb` builds the committed bytecode.
@@ -304,7 +305,8 @@ The `build_ebpf()` method:
 
 **Do not pass `-c` with `-S -emit-llvm`** (P10).
 
-The `build_source()` method cross-compiles `tholian-firewall-<variant>-<arch>`.
+`make build-cli` cross-compiles `tholian-firewall-<variant>-<arch>`; `make cli`
+is an alias.
 
 Build tags:
 
@@ -335,9 +337,14 @@ and XDP links are process-scoped (D10). Therefore:
   go test -c -tags guard -o build/linux/tholian-firewall-tests ./tests;
   sudo env THOLIAN_TEST_ATTACH=1 build/linux/tholian-firewall-tests -test.v;
   ```
-- `test.sh` automates: unit tests via `make.sh ebpf` which builds the CLI
-  and then builds the test binary and runs it under `sudo`. The CLI smoke
-  tests output everything to `logs/test.log`.
+- `make check` automates formatting, vet, and unit tests. `make test` runs the
+  unit tests, builds the eBPF module and test binaries, and runs the in-process
+  integration suite. Use `make test-with-log` to write the output to
+  `logs/test.log`.
+- External CLI tests live in the standalone `e2e-tests/` module.
+  `make test-e2e` builds the CLI and test binary, then runs the suite under
+  `sudo`. Use `make test-e2e-with-log` to write the output to
+  `logs/test_e2e.log`.
 - `TestDNSDrop` crafts a DNS response and runs the program via
   `BPF_PROG_TEST_RUN` to assert `XDP_DROP`.
 - `TestDomainResolutionInstall` asserts resolved `A` / `AAAA` addresses land
@@ -413,8 +420,9 @@ map that's embedded. Maybe with zones like Europe/Non-Europe/etc?
 ### D8 - Go integration tests compiled with `go test -c`
 
 The privileged checks must run in a single process (D10), and `go test -c`
-produces one self-contained binary that `test.sh` runs under `sudo`. Tests
-skip gracefully without root.
+produces one self-contained binary that `make test` runs under `sudo`.
+Tests skip gracefully without root. External CLI behavior is covered separately
+by the `e2e-tests/` module and `make test-e2e`.
 
 ### D9 - Explicit build tags for backends
 
@@ -593,7 +601,7 @@ embed the library in a long-running backend for real deployments.
 
 1. Change the C and the Go helpers together. Verify the BTF key size after
    every map change (`bpftool btf dump ... format raw`).
-2. Rebuild artifacts (`bash make.sh ebpf`) and commit `module.ll`,
+2. Rebuild artifacts (`make build-ebpf`) and commit `module.ll`,
    `module.bpfel`, `module.bpfeb` whenever `module.c`/`module.h` change.
 3. Never trust the source for verifier safety. Inspect the generated asm and
    the full verifier log (`reportError` dumps it). Watch `processed N insns`,
@@ -603,7 +611,8 @@ embed the library in a long-running backend for real deployments.
    guards. When in doubt, move parsing to user space.
 6. Keep the Go side clear: `errors.Is` for cilium errors, exact key
    sizes/byte order, and update `SUPPORTED` only after a successful probe.
-7. Test under `sudo` via `test.sh`, and check `logs/test.log`.
+7. Test under `sudo` via `make test` or `make test-e2e`, and check
+   `logs/test.log` or `logs/test_e2e.log` when using the `-with-log` targets.
 
 ---
 

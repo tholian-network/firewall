@@ -70,15 +70,17 @@ that `replace` directive accordingly.
 
 ## Building
 
-Building requires `go`, `clang`, `llc` (LLVM), and libbpf headers.
+Building requires `make`, `go`, `clang`, `llc` (LLVM), and libbpf headers.
 The embedded `source/insights/Internet.json.gz` dataset for `guard_<distribution>`
 builds. It is intentionally not tracked by Git.
+
+Run `make help` to list all available targets.
 
 ### eBPF module
 
 ```bash
 cd /path/to/tholian-firewall;
-bash make.sh ebpf;
+make build-ebpf;
 ```
 
 This compiles the [eBPF module](ebpf/module/module.c) with `-DENABLE_DNSFILTER`,
@@ -91,7 +93,7 @@ The generated artifacts are tracked by Git; rebuild them whenever the C code cha
 
 ```bash
 cd /path/to/tholian-firewall;
-bash make.sh source;
+make build-cli;
 
 ls ./build/linux/*;
 # tholian-firewall-guard-amd64
@@ -158,16 +160,20 @@ sudo tholian-firewall load rules.txt;
 
 ## Testing
 
-Unit tests run anywhere. The integration tests need root, a BPF-capable kernel,
-and the embedded Internet dataset:
+Unit tests do not need root. Every `guard`-tagged target, including
+`make check`, requires the embedded Internet dataset. The integration and
+end-to-end suites additionally need root and a BPF-capable kernel:
 
 ```bash
-bash test.sh
+make check;    # formatting, vet, and unit tests
+make test;     # unit tests + eBPF build + in-process integration suite
+make test-e2e; # external CLI end-to-end suite (sudo is handled by make)
 ```
 
-The full log is written to `logs/test.log`. The suite runs formatting and vet
-checks, unit tests with the race detector, builds a single integration test
-binary with `go test -c` and runs it under `sudo`, then does CLI smoke tests.
+`make test-with-log` writes `logs/test.log` and `make test-e2e-with-log` writes
+`logs/test_e2e.log`. Run `make test-all` to execute both suites. Set
+`THOLIAN_TEST_ATTACH=0` to skip the intrusive XDP attach tests
+(`make test-e2e THOLIAN_TEST_ATTACH=0`).
 See [TESTING.md](docs/TESTING.md) for details.
 
 ## Documentation
