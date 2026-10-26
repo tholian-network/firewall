@@ -9,7 +9,6 @@ reach your operating system's networking stack.
 It is designed to be embedded directly into a Go service as a library,
 and also ships as a standalone CLI for scripting and operations.
 
-
 ## Motivations
 
 Traditional firewalls are configured out-of-band, live in a different process,
@@ -31,43 +30,49 @@ The Tholian Firewall takes a different stance:
 
 ## Design Goals
 
-1. Filter ingress traffic at kernel speed using XDP, with a stable, tiny verifier
-   memory footprint.
+1. Filter ingress traffic at kernel speed using XDP.
 2. Be a first-class Go library without CGo dependencies. No daemon required in
    the embedding process, no external rule engine.
 3. Cover the common blocking primitives like IPv4/IPv6 addresses, CIDR subnets,
    TCP/UDP ports, ASN-derived networks, and domains.
-4. Stay honest about state and the API always reports whether a ban was actually
-   applied, and degrades to fallbacks when eBPF is unavailable.
-5. Privileged behaviour is exercised by Go integration tests which are compiled
-   into a single binary and run under `sudo`.
+4. Always report the correct state about filtered origins, and degrade only to
+   fallbacks when eBPF is unavailable.
 
 ## Requirements
 
-- Linux with XDP support (`CONFIG_X86_64`, a NIC/driver with XDP, or SKB mode).
-- Root, or `CAP_BPF` + `CAP_NET_ADMIN` (map creation and XDP attach need them).
-- To build: `go`, `clang`, `llc`/LLVM, and libbpf headers.
-- The embedded `source/insights/Internet.json.gz` dataset for `guard` builds.
-  It is intentionally not tracked by Git; see [Building](#building).
+The module is built using Go's module system. In the Tholian Network, all
+repositories are checked out next to each other.
 
-## Building
-
-### tholian-core dependency
-
-The shared structs, matchers, and types live in the separate `tholian-core`
-module. This repository expects it to be checked out next to the firewall
+The shared Tholian Core Type System lives in the [tholian-core](https://github.com/tholian-network/core)
+repository. This repository expects it to be checked out next to the firewall
 folder:
 
 ```text
-tholian-network/
-├── core/       # tholian-core module
-└── firewall/   # this repository
+/path/to/Software/tholian-network/
+|- core/        # tholian-core module
+\- firewall/    # this repository
 ```
 
 `source/go.mod` resolves the dependency with
 `replace tholian-core => ../../core/source`, which is relative to the `source/`
 directory. If your checkout uses a different directory name or location, adjust
 that `replace` directive accordingly.
+
+### Build tags
+
+| Tag                                                | Includes                             |
+|----------------------------------------------------|--------------------------------------|
+| `guard` (and `guard_<distro>`)                     | eBPF adapter + `insights` (ASN data) |
+| `guard_openwrt`                                    | eBPF adapter only                    |
+| `guard_freebsd` / `guard_netbsd` / `guard_openbsd` | iptables/hosts fallback              |
+| `intel` / `oversight`                              | eBPF stubs                           |
+| no tag                                             | eBPF stubs + iptables/hosts fallback |
+
+## Building
+
+Building requires `go`, `clang`, `llc` (LLVM), and libbpf headers.
+The embedded `source/insights/Internet.json.gz` dataset for `guard_<distribution>`
+builds. It is intentionally not tracked by Git.
 
 ### eBPF module
 
@@ -77,11 +82,12 @@ bash make.sh ebpf;
 ```
 
 This compiles the [eBPF module](ebpf/module/module.c) with `-DENABLE_DNSFILTER`,
-emits LLVM IR, and generates little- and big-endian bytecode (`module.bpfel`,
-`module.bpfeb`) that the Go bridge embeds. The generated artifacts are committed;
-rebuild them whenever the C code changes.
+emits LLVM IR, and generates both the little-endian (`module.bpfel`) and big-endian
+bytecodes (`module.bpfeb`) that the Go bridge embeds.
 
-### Go program
+The generated artifacts are tracked by Git; rebuild them whenever the C code changes.
+
+### Firewall CLI
 
 ```bash
 cd /path/to/tholian-firewall;
@@ -94,17 +100,12 @@ ls ./build/linux/*;
 # tholian-firewall-guard_openwrt-arm64
 ```
 
-### Build tags
+## Usage
 
-| Tag                                                | Includes                             |
-|----------------------------------------------------|--------------------------------------|
-| `guard` (and `guard_<distro>`)                     | eBPF adapter + `insights` (ASN data) |
-| `guard_openwrt`                                    | eBPF adapter only                    |
-| `guard_freebsd` / `guard_netbsd` / `guard_openbsd` | iptables/hosts fallback              |
-| `intel` / `oversight`                              | eBPF stubs                           |
-| no tag                                             | eBPF stubs + iptables/hosts fallback |
+- Linux with XDP support (NIC/driver with XDP, or SKB mode).
+- Root, or `CAP_BPF` and `CAP_NET_ADMIN` (to use BPF map creation and XDP attach).
 
-## Running the CLI
+### Usage: Firewall CLI
 
 ```bash
 sudo ./build/linux/tholian-firewall-guard-amd64 <action> [target]
@@ -155,51 +156,10 @@ permit 8.8.8.8;
 sudo tholian-firewall load rules.txt;
 ```
 
-## Embedding in a Go backend
-
-Tholian is a library first. Create a `structs.Console` for output, call
-`ebpf.Init(console)` / `insights.Init(console)` to load the backends, then call
-`actions.Init(console)` once at startup to attach to the interfaces and drive it
-from your own code. The console is passed to every call so its message log stays
-complete and can be serialized later:
-
-```go
-import "tholian-firewall/actions"
-import "tholian-firewall/adapters/mitigations/ebpf"
-import "tholian-firewall/insights"
-import "tholian-core/structs"
-import "os"
-
-func main() {
-
-    console := structs.NewConsole(os.Stdout, os.Stderr, 0)
-
-    ebpf.Init(console)
-    insights.Init(console)
-
-    if actions.Init(console) == false {
-        // no eBPF backend available; fall back or exit
-    }
-
-    actions.Forbid(console, "1.3.3.7")
-    actions.Forbid(console, "evil.example")
-
-    if actions.Check(console, "1.3.3.7") {
-        // traffic to 1.3.3.7 is currently dropped
-    }
-
-    actions.Permit(console, "1.3.3.7")
-}
-```
-
-Because unpinned BPF maps and XDP links live in the process that created them,
-the embedding process must stay alive for filtering to continue. Pinned maps and
-a daemon/IPC mode are planned; see [docs/TODO.md](docs/TODO.md).
-
 ## Testing
 
-Unit tests run anywhere; integration tests need root, a BPF-capable kernel, and
-the embedded Internet dataset:
+Unit tests run anywhere. The integration tests need root, a BPF-capable kernel,
+and the embedded Internet dataset:
 
 ```bash
 bash test.sh
@@ -208,7 +168,7 @@ bash test.sh
 The full log is written to `logs/test.log`. The suite runs formatting and vet
 checks, unit tests with the race detector, builds a single integration test
 binary with `go test -c` and runs it under `sudo`, then does CLI smoke tests.
-See [docs/TESTING.md](docs/TESTING.md) for details.
+See [TESTING.md](docs/TESTING.md) for details.
 
 ## Documentation
 
