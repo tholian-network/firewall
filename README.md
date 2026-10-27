@@ -197,4 +197,7 @@ See [TESTING.md](docs/TESTING.md) for details.
 
 ## License
 
-Proprietary.
+The Tholian Firewall is licensed under the
+[GNU Affero General Public License v3.0](./LICENSE.txt).
+
+`(c) 2022-2026 by Tholian(r) Network`
